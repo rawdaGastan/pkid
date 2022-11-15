@@ -1,0 +1,170 @@
+consumes:
+- application/json
+info:
+  description: HTTP server in Go with Swagger endpoints definition.
+  title: urls-checker-api
+  version: 0.1.0
+produces:
+- application/json
+schemes:
+- http
+swagger: "2.0"
+
+paths:
+  /get/{pk}/{project}/{key}:
+    get:
+      description: Returns the value of the given key inside the given project
+      parameters:
+        - name: pk
+          in: path
+          description: primary key of the user
+          required: true
+          type: string
+        - name: project
+          in: path
+          description: the name of the project
+          required: true
+          type: string
+        - name: key
+          in: path
+          description: the key
+          required: true
+          type: string
+      responses:
+        200:
+          description: returns the signed payload (it includes the value and it can be encrypted or not)
+          schema:
+            $ref: '#/definitions/GetResponse' 
+
+  /set/{pk}/{project}/{key}:
+    post:
+      description: set a new value for the given key of the project
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: payload
+          description: signed payload that includes the value, encrypted or not and the version
+          schema:
+            $ref: '#/definitions/Payload'
+        - in: header
+          name: Authorization
+          description: signed header that includes the intent and timestamp
+          type: string
+        - name: pk
+          in: path
+          description: primary key of the user
+          required: true
+          type: string
+        - name: project
+          in: path
+          description: the name of the project
+          required: true
+          type: string
+        - name: key
+          in: path
+          description: the key
+          required: true
+          type: string 
+      responses:
+        201:
+          description: Data is set
+          schema:
+            $ref: '#/definitions/Response' 
+
+  /list/{pk}/{project}:
+    get:
+      description: Get all keys inside a project
+      parameters:
+        - name: pk
+          in: path
+          description: primary key of the user
+          required: true
+          type: string
+        - name: project
+          in: path
+          description: the name of the project
+          required: true
+          type: string
+      responses:
+        200:
+          description: all keys are got
+          schema:
+            $ref: '#/definitions/ListResponse' 
+  
+  /delete/{pk}/{project}/{key}:
+    delete:
+      description: delete the value for the given key of the project
+      parameters:
+        - name: pk
+          in: path
+          description: primary key of the user
+          required: true
+          type: string
+        - name: project
+          in: path
+          description: the name of the project
+          required: true
+          type: string
+        - name: key
+          in: path
+          description: the key
+          required: true
+          type: string
+      responses:
+        202:
+          description: key is deleted
+          schema:
+            $ref: '#/definitions/Response' 
+
+  
+definitions:
+  Key:
+    type: string
+
+  Header:
+    type: object
+    properties:
+      intent:
+        type: string
+        example: pkid.store
+      timestamp:
+        type: integer
+
+  Payload:
+    type: object
+    required:
+      - value
+      - is_encrypted
+      - data_version
+    properties:
+      value:
+        type: string
+      is_encrypted:
+        type: boolean
+      data_version:
+        type: integer
+
+  ListResponse:
+    type: object
+    properties:
+      msg:
+        type: string
+      data:
+        type: array
+        items:
+          $ref: '#/definitions/Key'
+
+  GetResponse:
+    type: object
+    properties:
+      msg:
+        type: string
+      data:
+        type: string
+
+  Response:
+    type: object
+    properties:
+      msg:
+        type: string

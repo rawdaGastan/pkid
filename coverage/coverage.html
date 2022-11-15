@@ -1,0 +1,928 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>client: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/rawdaGastan/pkid/client/crypto.go (82.8%)</option>
+				
+				<option value="file1">github.com/rawdaGastan/pkid/client/pkid_client.go (80.4%)</option>
+				
+				<option value="file2">github.com/rawdaGastan/pkid/internal/routes.go (76.4%)</option>
+				
+				<option value="file3">github.com/rawdaGastan/pkid/internal/server.go (11.1%)</option>
+				
+				<option value="file4">github.com/rawdaGastan/pkid/internal/sqlite_db.go (84.3%)</option>
+				
+				<option value="file5">github.com/rawdaGastan/pkid/internal/verify.go (90.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package client
+
+import (
+        "encoding/base64"
+        "encoding/json"
+        "errors"
+        "fmt"
+
+        "github.com/GoKillers/libsodium-go/cryptobox"
+        sodium "github.com/gokillers/libsodium-go/cryptosign"
+        "golang.org/x/crypto/nacl/sign"
+)
+
+// sign a msg using public key
+func signMsg(message []byte, privateKey []byte) ([]byte, int) <span class="cov8" title="1">{
+        return sodium.CryptoSign(message, privateKey)
+}</span>
+
+// sign a msg then encode it
+func SignEncode(payload map[string]interface{}, privateKey []byte) (string, error) <span class="cov8" title="1">{
+        message, err := json.Marshal(payload)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">signed, _ := signMsg(message, privateKey)
+
+        return base64.StdEncoding.EncodeToString(signed), nil</span>
+}
+
+// verify the signed data (value) of the set request body
+func verifySignedData(data string, pk []byte) ([]byte, error) <span class="cov8" title="1">{
+
+        // pk in bytes
+        verifyPk := [32]byte{}
+        copy(verifyPk[:], pk)
+
+        decodedData, err := base64.StdEncoding.DecodeString(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return []byte{}, err
+        }</span>
+
+        <span class="cov8" title="1">decodedDataOut := []byte{}
+        verifiedContent, verified := sign.Open(decodedDataOut, decodedData, &amp;verifyPk)
+
+        if !verified </span><span class="cov0" title="0">{
+                return []byte{}, errors.New("verifying data failed, " + fmt.Sprint(verified))
+        }</span>
+
+        <span class="cov8" title="1">return verifiedContent, nil</span>
+}
+
+func encrypt(payload string, publicKey []byte) (string, error) <span class="cov8" title="1">{
+        message, err := json.Marshal(payload)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("marshal payload failed with error, " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
+        encryptedMessage, _ := cryptobox.CryptoBoxSeal(message, curvePublicKey)
+
+        return base64.StdEncoding.EncodeToString(encryptedMessage), nil</span>
+}
+
+func decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error) <span class="cov8" title="1">{
+        decodedCipher, err := base64.StdEncoding.DecodeString(cipher)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("decoding cipher text failed with error, " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
+        curvePrivateKey, _ := sodium.CryptoSignEd25519SkToCurve25519(privateKey)
+
+        decrypted, _ := cryptobox.CryptoBoxSealOpen(decodedCipher, curvePublicKey, curvePrivateKey)
+
+        return string(decrypted), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package client
+
+import (
+        "bytes"
+        "encoding/hex"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io"
+        "net/http"
+        "time"
+
+        sodium "github.com/gokillers/libsodium-go/cryptosign"
+)
+
+type PkidClient struct {
+        client     http.Client
+        port       int
+        privateKey []byte
+        publicKey  []byte
+}
+
+// create a new instance from the pkid client
+func NewPkidClient(privateKey []byte, publicKey []byte, port int) PkidClient <span class="cov8" title="1">{
+        client := http.Client{Timeout: 5 * time.Second}
+
+        return PkidClient{
+                client:     client,
+                port:       port,
+                privateKey: privateKey,
+                publicKey:  publicKey,
+        }
+
+}</span>
+
+// generate a private key and public key for the client
+func GenerateKeyPair() ([]byte, []byte) <span class="cov8" title="1">{
+        privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
+        return privateKey, publicKey
+}</span>
+
+// set a new value for a key inside a project
+func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error <span class="cov8" title="1">{
+
+        if willEncrypt </span><span class="cov8" title="1">{
+                decryptedValue, err := encrypt(value, pc.publicKey)
+                if err != nil </span><span class="cov0" title="0">{
+                        return errors.New("encryption failed with error: " + fmt.Sprint(err))
+                }</span>
+
+                <span class="cov8" title="1">value = decryptedValue</span>
+        }
+
+        <span class="cov8" title="1">header := map[string]interface{}{
+                "intent":    "pkid.store",
+                "timestamp": time.Now().Unix(),
+        }
+
+        payload := map[string]interface{}{
+                "is_encrypted": willEncrypt,
+                "payload":      value,
+                "data_version": 1,
+        }
+
+        signedBody, err := SignEncode(payload, pc.privateKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("error sign body: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">signedHeader, err := SignEncode(header, pc.privateKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("error sign header: " + fmt.Sprint(err))
+        }</span>
+
+        // set request
+        <span class="cov8" title="1">jsonBody := []byte(signedBody)
+        bodyReader := bytes.NewReader(jsonBody)
+
+        requestURL := fmt.Sprintf("http://localhost:%v/set/%v/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project, key)
+        request, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("set request failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">request.Header.Set("Authorization", signedHeader)
+        request.Header.Set("Content-Type", "application/json")
+
+        response, err := pc.client.Do(request)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("set response failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">defer response.Body.Close()
+        body, err := io.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("read response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">var data map[string]interface{}
+        err = json.Unmarshal(body, &amp;data)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">msg := data["msg"].(string)
+        fmt.Println(msg)
+
+        return err</span>
+}
+
+// get a value for a key inside a project
+func (pc *PkidClient) Get(project string, key string) (string, error) <span class="cov8" title="1">{
+
+        requestURL := fmt.Sprintf("http://localhost:%v/get/%v/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project, key)
+        request, err := http.NewRequest(http.MethodGet, requestURL, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("get request failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
+
+        response, err := pc.client.Do(request)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("get response failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">defer response.Body.Close()
+        body, err := io.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("read response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">var data map[string]string
+        err = json.Unmarshal(body, &amp;data)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">msg := data["msg"]
+        fmt.Println(msg)
+
+        signedPayload := data["data"]
+
+        payload, err := verifySignedData(signedPayload, pc.publicKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("verifying data failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">var jsonPayload map[string]interface{}
+        err = json.Unmarshal(payload, &amp;jsonPayload)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("unmarshal payload failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">is_encrypted := jsonPayload["is_encrypted"].(bool)
+        value := jsonPayload["payload"].(string)
+
+        if is_encrypted </span><span class="cov8" title="1">{
+                value, err = decrypt(value, pc.publicKey, pc.privateKey)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", errors.New("decrypting value failed with error, " + fmt.Sprint(err))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return value, nil</span>
+}
+
+// list all keys for a project
+func (pc *PkidClient) List(project string) ([]string, error) <span class="cov8" title="1">{
+
+        requestURL := fmt.Sprintf("http://localhost:%v/list/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project)
+        request, err := http.NewRequest(http.MethodGet, requestURL, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, errors.New("get request failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
+
+        response, err := pc.client.Do(request)
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, errors.New("get response failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">defer response.Body.Close()
+        body, err := io.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, errors.New("read response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">var data map[string]interface{}
+        err = json.Unmarshal(body, &amp;data)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">interfaceKeys := data["data"].([]interface{})
+        keys := make([]string, len(interfaceKeys))
+        for i, v := range interfaceKeys </span><span class="cov8" title="1">{
+                keys[i] = v.(string)
+        }</span>
+
+        <span class="cov8" title="1">return keys, nil</span>
+}
+
+// delete a key with its value inside a project
+func (pc *PkidClient) Delete(project string, key string) error <span class="cov8" title="1">{
+
+        requestURL := fmt.Sprintf("http://localhost:%v/delete/%v/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project, key)
+        request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("delete request failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
+
+        response, err := pc.client.Do(request)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("delete response failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">defer response.Body.Close()
+        body, err := io.ReadAll(response.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("read response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">var data map[string]interface{}
+        err = json.Unmarshal(body, &amp;data)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov8" title="1">msg := data["msg"].(string)
+        fmt.Println(msg)
+
+        return err</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package internal
+
+import (
+        "bytes"
+        "encoding/hex"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "net/http"
+        "strings"
+
+        "github.com/gorilla/mux"
+        "github.com/rs/zerolog"
+)
+
+type server struct {
+        db     *sqliteDB
+        logger zerolog.Logger
+}
+
+// create a new instance of the server
+func newServer(logger zerolog.Logger) server <span class="cov8" title="1">{
+        return server{
+                logger: logger,
+        }
+}</span>
+
+// set the connection and migration of the db
+func (s *server) setConn(filePath string) error <span class="cov8" title="1">{
+        if filePath == "" </span><span class="cov0" title="0">{
+                return errors.New("no file path provided")
+        }</span>
+
+        <span class="cov8" title="1">db := newSQLiteDB()
+        db.setConn(filePath)
+        if err := db.migrate(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">s.db = db
+        return nil</span>
+}
+
+// get the value of the given key, using the public key
+func (s *server) get(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+
+        pk := mux.Vars(request)["pk"]
+        project := mux.Vars(request)["project"]
+        key := mux.Vars(request)["key"]
+        projectKey := project + "_" + key
+
+        docKey := pk + "_" + projectKey
+        value, err := s.db.get(docKey)
+        if err != nil </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("can't find key: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(200)
+        w.Header().Set("Content-Type", "application/json")
+        res, err := json.Marshal(map[string]string{"data": value, "msg": "data is got successfully"})
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+        <span class="cov8" title="1">w.Write(res)</span>
+}
+
+// list all keys for a specific project, using the public key
+func (s *server) list(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+
+        pk := mux.Vars(request)["pk"]
+        project := mux.Vars(request)["project"]
+
+        AllKeys, err := s.db.list()
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("db list failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        <span class="cov8" title="1">keys := []string{}
+        for _, key := range AllKeys </span><span class="cov8" title="1">{
+                if strings.HasPrefix(key, pk+"_"+project+"_") </span><span class="cov8" title="1">{
+                        splitKey := strings.Split(key, "_")
+                        if len(splitKey) == 3 </span><span class="cov8" title="1">{
+                                keys = append(keys, splitKey[2])
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">w.WriteHeader(200)
+        w.Header().Set("Content-Type", "application/json")
+        res, err := json.Marshal(map[string]any{"data": keys, "msg": "data is got successfully"})
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+        <span class="cov8" title="1">w.Write(res)</span>
+}
+
+// delete the value of the given key, using the public key
+func (s *server) delete(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+
+        pk := mux.Vars(request)["pk"]
+        project := mux.Vars(request)["project"]
+        key := mux.Vars(request)["key"]
+        projectKey := project + "_" + key
+
+        docKey := pk + "_" + projectKey
+        err := s.db.delete(docKey)
+        if err != nil </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("db deletion failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(202)
+        w.Header().Set("Content-Type", "application/json")
+        res, err := json.Marshal(map[string]string{"msg": "data is deleted successfully"})
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+        <span class="cov8" title="1">w.Write(res)</span>
+
+}
+
+// set the given value of the given key, using the public key
+func (s *server) set(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+
+        pk := mux.Vars(request)["pk"]
+        project := mux.Vars(request)["project"]
+        key := mux.Vars(request)["key"]
+        projectKey := project + "_" + key
+
+        buf := new(bytes.Buffer)
+        buf.ReadFrom(request.Body)
+        body := buf.String()
+
+        // verify key
+        verifyPk, err := hex.DecodeString(pk)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("can't decode public key: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        // check request
+        <span class="cov8" title="1">if body == "" </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("no body given")
+                return
+        }</span>
+
+        <span class="cov8" title="1">if request.Header.Get("Authorization") == "" </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("no Authorization header")
+                return
+        }</span>
+
+        // verify
+        <span class="cov8" title="1">verified, err := verifySignedData(s.logger, body, verifyPk)
+        if !verified || err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("invalid data: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        <span class="cov8" title="1">authHeader, err := verifySignedHeader(s.logger, request.Header.Get("Authorization"), verifyPk)
+        if !authHeader || err != nil </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("invalid authorization header: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        // set date
+        <span class="cov8" title="1">docKey := pk + "_" + projectKey
+        err = s.db.set(docKey, body)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("database set failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+
+        // response
+        <span class="cov8" title="1">w.WriteHeader(201)
+        w.Header().Set("Content-Type", "application/json")
+        res, err := json.Marshal(map[string]string{"msg": "data is set successfully"})
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+                return
+        }</span>
+        <span class="cov8" title="1">w.Write(res)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package internal
+
+import (
+        "errors"
+        "fmt"
+        "net/http"
+
+        "github.com/gorilla/mux"
+        "github.com/rs/zerolog"
+)
+
+func StartServer(logger zerolog.Logger, filePath string, port int) error <span class="cov8" title="1">{
+
+        if filePath == "" </span><span class="cov8" title="1">{
+                return errors.New("no file path provided")
+        }</span>
+
+        // set the server
+        <span class="cov0" title="0">server := newServer(logger)
+        err := server.setConn(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.New("error starting server database: " + fmt.Sprint(err))
+        }</span>
+
+        // set the router
+        <span class="cov0" title="0">router := mux.NewRouter().StrictSlash(true)
+
+        router.HandleFunc("/set/{pk}/{project}/{key}", server.set).Methods("POST")
+        router.HandleFunc("/get/{pk}/{project}/{key}", server.get).Methods("GET")
+        router.HandleFunc("/list/{pk}/{project}", server.list).Methods("GET")
+        router.HandleFunc("/delete/{pk}/{project}/{key}", server.delete).Methods("DELETE")
+
+        // start the server
+        logger.Debug().Msg("server is running at " + fmt.Sprint(port))
+        err = http.ListenAndServe(":"+fmt.Sprint(port), router)
+
+        if errors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
+                return errors.New("server closed")
+        }</span> else<span class="cov0" title="0"> if err != nil </span><span class="cov0" title="0">{
+                return errors.New("starting server failed with error: " + fmt.Sprint(err))
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package internal
+
+import (
+        "database/sql"
+        "errors"
+        "os"
+
+        "github.com/mattn/go-sqlite3"
+)
+
+var (
+        ErrNotExists    = errors.New("row not exist")
+        ErrSetFailed    = errors.New("set failed")
+        ErrDeleteFailed = errors.New("delete failed")
+)
+
+type sqliteDB struct {
+        db *sql.DB
+}
+
+// new instance of sqlite database
+func newSQLiteDB() *sqliteDB <span class="cov8" title="1">{
+        return &amp;sqliteDB{}
+}</span>
+
+// set the connection and filePath of the sqlite db
+func (sqlite *sqliteDB) setConn(filePath string) error <span class="cov8" title="1">{
+        if filePath == "" </span><span class="cov8" title="1">{
+                return errors.New("no file path provided")
+        }</span>
+
+        <span class="cov8" title="1">os.Remove(filePath)
+
+        db, err := sql.Open("sqlite3", filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">sqlite.db = db
+        return nil</span>
+}
+
+// create a new table pkid includes 2 columns for key and value, key is unique
+func (sqlite *sqliteDB) migrate() error <span class="cov8" title="1">{
+        query := `
+    CREATE TABLE IF NOT EXISTS pkid(
+        key TEXT NOT NULL UNIQUE,
+        value TEXT NOT NULL
+    );
+    `
+        _, err := sqlite.db.Exec(query)
+        return err
+}</span>
+
+// add a new row in the table pkid with key and value
+func (sqlite *sqliteDB) set(key string, value string) error <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return errors.New("invalid key")
+        }</span>
+
+        <span class="cov8" title="1">res, err := sqlite.db.Exec("INSERT INTO pkid(key, value) values(?,?)", key, value)
+        if err != nil </span><span class="cov8" title="1">{
+                var sqliteErr sqlite3.Error
+                if errors.As(err, &amp;sqliteErr) </span><span class="cov8" title="1">{
+                        if errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) </span><span class="cov8" title="1">{
+                                return sqlite.update(key, value)
+                        }</span>
+                }
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov0" title="0">{
+                return ErrSetFailed
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// get the value of the given key in the table pkid
+func (sqlite *sqliteDB) get(key string) (string, error) <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return "", errors.New("invalid key")
+        }</span>
+
+        <span class="cov8" title="1">row := sqlite.db.QueryRow("SELECT * FROM pkid WHERE key = ?", key)
+
+        var value string
+        if err := row.Scan(&amp;key, &amp;value); err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return "", ErrNotExists
+                }</span>
+                <span class="cov0" title="0">return "", err</span>
+        }
+        <span class="cov8" title="1">return value, nil</span>
+}
+
+// update a row in the table pkid with key and value
+func (sqlite *sqliteDB) update(key string, value string) error <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return errors.New("invalid updated ID")
+        }</span>
+        <span class="cov8" title="1">res, err := sqlite.db.Exec("UPDATE pkid SET value = ?", value)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                return ErrSetFailed
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// delete the value of the given key in the table pkid
+func (sqlite *sqliteDB) delete(key string) error <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return errors.New("invalid key")
+        }</span>
+
+        <span class="cov8" title="1">res, err := sqlite.db.Exec("DELETE FROM pkid WHERE key = ?", key)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                return ErrDeleteFailed
+        }</span>
+
+        <span class="cov8" title="1">return err</span>
+}
+
+// get all keys in the table pkid
+func (sqlite *sqliteDB) list() ([]string, error) <span class="cov8" title="1">{
+        rows, err := sqlite.db.Query("SELECT * FROM pkid")
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+
+        var all []string
+        for rows.Next() </span><span class="cov8" title="1">{
+                var key string
+                var value string
+                if err := rows.Scan(&amp;key, &amp;value); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">all = append(all, key)</span>
+        }
+        <span class="cov8" title="1">return all, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package internal
+
+import (
+        "encoding/base64"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "time"
+
+        "github.com/rs/zerolog"
+        "golang.org/x/crypto/nacl/sign"
+)
+
+// verify the signed data (value) of the set request body
+func verifySignedData(logger zerolog.Logger, data string, pk []byte) (bool, error) <span class="cov8" title="1">{
+
+        logger.Debug().Msg("start data verification")
+
+        // pk in bytes
+        verifyPk := [32]byte{}
+        copy(verifyPk[:], pk)
+
+        decodedData, err := base64.StdEncoding.DecodeString(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+        <span class="cov8" title="1">logger.Debug().Msg("data is decoded")
+
+        decodedDataOut := []byte{}
+        _, verified := sign.Open(decodedDataOut, decodedData, &amp;verifyPk)
+        logger.Debug().Msg("signed data is verified: " + fmt.Sprint(verified))
+
+        logger.Debug().Msg("end data verification")
+
+        return verified, nil</span>
+}
+
+// verify the signed header of the set request
+func verifySignedHeader(logger zerolog.Logger, header string, pk []byte) (bool, error) <span class="cov8" title="1">{
+
+        logger.Debug().Msg("verifying header")
+
+        // pk in bytes
+        verifyPk := [32]byte{}
+        copy(verifyPk[:], pk)
+
+        decodedHeader, err := base64.StdEncoding.DecodeString(header)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+        <span class="cov8" title="1">logger.Debug().Msg("header is decoded")
+
+        decodedHeaderOut := []byte{}
+
+        verifiedSignedHeader, verified := sign.Open(decodedHeaderOut, decodedHeader, &amp;verifyPk)
+        logger.Debug().Msg("signed header is verified: " + fmt.Sprint(verified))
+
+        jsonHeader := map[string]any{}
+        err = json.Unmarshal(verifiedSignedHeader, &amp;jsonHeader)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">milliseconds := time.Now().Unix()
+        diff := milliseconds - int64(jsonHeader["timestamp"].(float64))
+        logger.Debug().Msg("timestamp difference is: " + fmt.Sprint(diff) + " seconds")
+
+        if diff &gt; 5 || jsonHeader["intent"].(string) != "pkid.store" </span><span class="cov8" title="1">{
+                return false, errors.New("timestamp difference exceeded 5 seconds, " + fmt.Sprint(diff))
+        }</span>
+
+        <span class="cov8" title="1">logger.Debug().Msg("end header verification")
+
+        return verified, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

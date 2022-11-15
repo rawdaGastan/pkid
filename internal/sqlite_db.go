@@ -14,20 +14,24 @@ var (
 	ErrDeleteFailed = errors.New("delete failed")
 )
 
-type SQLiteDB struct {
+type sqliteDB struct {
 	db *sql.DB
 }
 
 // new instance of sqlite database
-func newSQLiteDB() *SQLiteDB {
-	return &SQLiteDB{}
+func newSQLiteDB() *sqliteDB {
+	return &sqliteDB{}
 }
 
-// set the connection and filename of the sqlite db
-func (sqlite *SQLiteDB) setConn(fileName string) error {
-	os.Remove(fileName)
+// set the connection and filePath of the sqlite db
+func (sqlite *sqliteDB) setConn(filePath string) error {
+	if filePath == "" {
+		return errors.New("no file path provided")
+	}
 
-	db, err := sql.Open("sqlite3", fileName)
+	os.Remove(filePath)
+
+	db, err := sql.Open("sqlite3", filePath)
 	if err != nil {
 		return err
 	}
@@ -36,7 +40,7 @@ func (sqlite *SQLiteDB) setConn(fileName string) error {
 }
 
 // create a new table pkid includes 2 columns for key and value, key is unique
-func (sqlite *SQLiteDB) migrate() error {
+func (sqlite *sqliteDB) migrate() error {
 	query := `
     CREATE TABLE IF NOT EXISTS pkid(
         key TEXT NOT NULL UNIQUE,
@@ -48,7 +52,11 @@ func (sqlite *SQLiteDB) migrate() error {
 }
 
 // add a new row in the table pkid with key and value
-func (sqlite *SQLiteDB) set(key string, value string) error {
+func (sqlite *sqliteDB) set(key string, value string) error {
+	if key == "" {
+		return errors.New("invalid key")
+	}
+
 	res, err := sqlite.db.Exec("INSERT INTO pkid(key, value) values(?,?)", key, value)
 	if err != nil {
 		var sqliteErr sqlite3.Error
@@ -73,7 +81,11 @@ func (sqlite *SQLiteDB) set(key string, value string) error {
 }
 
 // get the value of the given key in the table pkid
-func (sqlite *SQLiteDB) get(key string) (string, error) {
+func (sqlite *sqliteDB) get(key string) (string, error) {
+	if key == "" {
+		return "", errors.New("invalid key")
+	}
+
 	row := sqlite.db.QueryRow("SELECT * FROM pkid WHERE key = ?", key)
 
 	var value string
@@ -87,7 +99,7 @@ func (sqlite *SQLiteDB) get(key string) (string, error) {
 }
 
 // update a row in the table pkid with key and value
-func (sqlite *SQLiteDB) update(key string, value string) error {
+func (sqlite *sqliteDB) update(key string, value string) error {
 	if key == "" {
 		return errors.New("invalid updated ID")
 	}
@@ -109,7 +121,11 @@ func (sqlite *SQLiteDB) update(key string, value string) error {
 }
 
 // delete the value of the given key in the table pkid
-func (sqlite *SQLiteDB) delete(key string) error {
+func (sqlite *sqliteDB) delete(key string) error {
+	if key == "" {
+		return errors.New("invalid key")
+	}
+
 	res, err := sqlite.db.Exec("DELETE FROM pkid WHERE key = ?", key)
 	if err != nil {
 		return err
@@ -128,7 +144,7 @@ func (sqlite *SQLiteDB) delete(key string) error {
 }
 
 // get all keys in the table pkid
-func (sqlite *SQLiteDB) list() ([]string, error) {
+func (sqlite *sqliteDB) list() ([]string, error) {
 	rows, err := sqlite.db.Query("SELECT * FROM pkid")
 	if err != nil {
 		return nil, err
@@ -142,6 +158,7 @@ func (sqlite *SQLiteDB) list() ([]string, error) {
 		if err := rows.Scan(&key, &value); err != nil {
 			return nil, err
 		}
+
 		all = append(all, key)
 	}
 	return all, nil

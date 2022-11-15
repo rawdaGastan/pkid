@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
+	"github.com/rs/zerolog"
 	"golang.org/x/crypto/nacl/sign"
 )
 
 // verify the signed data (value) of the set request body
-func verifySignedData(w http.ResponseWriter, data string, pk []byte) (bool, error) {
+func verifySignedData(logger zerolog.Logger, data string, pk []byte) (bool, error) {
 
-	fmt.Fprintf(w, "start data verification\n")
+	logger.Debug().Msg("start data verification")
 
 	// pk in bytes
 	verifyPk := [32]byte{}
@@ -24,20 +24,21 @@ func verifySignedData(w http.ResponseWriter, data string, pk []byte) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(w, "data is decoded\n")
+	logger.Debug().Msg("data is decoded")
 
-	_, verified := sign.Open(decodedData, decodedData, &verifyPk)
-	fmt.Fprintf(w, "signed data is verified: %v \n", verified)
+	decodedDataOut := []byte{}
+	_, verified := sign.Open(decodedDataOut, decodedData, &verifyPk)
+	logger.Debug().Msg("signed data is verified: " + fmt.Sprint(verified))
 
-	fmt.Fprintf(w, "end data verification\n")
+	logger.Debug().Msg("end data verification")
 
 	return verified, nil
 }
 
 // verify the signed header of the set request
-func verifySignedHeader(w http.ResponseWriter, header string, pk []byte) (bool, error) {
+func verifySignedHeader(logger zerolog.Logger, header string, pk []byte) (bool, error) {
 
-	fmt.Fprintf(w, "verifying header\n")
+	logger.Debug().Msg("verifying header")
 
 	// pk in bytes
 	verifyPk := [32]byte{}
@@ -47,12 +48,12 @@ func verifySignedHeader(w http.ResponseWriter, header string, pk []byte) (bool, 
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(w, "header is decoded\n")
+	logger.Debug().Msg("header is decoded")
 
 	decodedHeaderOut := []byte{}
 
 	verifiedSignedHeader, verified := sign.Open(decodedHeaderOut, decodedHeader, &verifyPk)
-	fmt.Fprintf(w, "signed header is verified: %v\n", verified)
+	logger.Debug().Msg("signed header is verified: " + fmt.Sprint(verified))
 
 	jsonHeader := map[string]any{}
 	err = json.Unmarshal(verifiedSignedHeader, &jsonHeader)
@@ -62,13 +63,13 @@ func verifySignedHeader(w http.ResponseWriter, header string, pk []byte) (bool, 
 
 	milliseconds := time.Now().Unix()
 	diff := milliseconds - int64(jsonHeader["timestamp"].(float64))
-	fmt.Fprintf(w, "timestamp difference is: %v seconds\n", diff)
+	logger.Debug().Msg("timestamp difference is: " + fmt.Sprint(diff) + " seconds")
 
 	if diff > 5 || jsonHeader["intent"].(string) != "pkid.store" {
-		return false, errors.New("timestamp difference exceeded 5 seconds, " + fmt.Sprint(diff) + "\n")
+		return false, errors.New("timestamp difference exceeded 5 seconds, " + fmt.Sprint(diff))
 	}
 
-	fmt.Fprintf(w, "end header verification\n")
+	logger.Debug().Msg("end header verification")
 
 	return verified, nil
 }
