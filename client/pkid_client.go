@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,16 @@ func NewPkidClient(privateKey []byte, publicKey []byte, port int) PkidClient {
 func GenerateKeyPair() ([]byte, []byte) {
 	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
 	return privateKey, publicKey
+}
+
+// generate a private key and public key for the client using TF login seed
+func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) {
+	decodedSeed, err := base64.StdEncoding.DecodeString(seed)
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+	privateKey, publicKey, _ := sodium.CryptoSignSeedKeyPair(decodedSeed)
+	return privateKey, publicKey, nil
 }
 
 // set a new value for a key inside a project

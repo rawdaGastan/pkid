@@ -9,6 +9,14 @@ func TestSqliteDB(t *testing.T) {
 	privateKey, publicKey := GenerateKeyPair()
 	pkidClient := NewPkidClient(privateKey, publicKey, port)
 
+	t.Run("test_seed_key_pair", func(t *testing.T) {
+		seed := "bm2xl92552zz0Kxtvg4Gbaosnh6FY9H2WsIKao6Emh8="
+		_, _, err := GenerateKeyPairUsingSeed(seed)
+		if err != nil {
+			t.Errorf("generating keys should be successful: %v", err)
+		}
+	})
+
 	t.Run("test_set", func(t *testing.T) {
 		err := pkidClient.Set("pkid", "key", "value", true)
 		if err != nil {

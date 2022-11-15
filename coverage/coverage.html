@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/rawdaGastan/pkid/client/crypto.go (82.8%)</option>
 				
-				<option value="file1">github.com/rawdaGastan/pkid/client/pkid_client.go (80.4%)</option>
+				<option value="file1">github.com/rawdaGastan/pkid/client/pkid_client.go (80.3%)</option>
 				
 				<option value="file2">github.com/rawdaGastan/pkid/internal/routes.go (76.4%)</option>
 				
@@ -164,6 +164,7 @@ func decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error)
 
 import (
         "bytes"
+        "encoding/base64"
         "encoding/hex"
         "encoding/json"
         "errors"
@@ -200,6 +201,16 @@ func GenerateKeyPair() ([]byte, []byte) <span class="cov8" title="1">{
         privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
         return privateKey, publicKey
 }</span>
+
+// generate a private key and public key for the client using TF login seed
+func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) <span class="cov8" title="1">{
+        decodedSeed, err := base64.StdEncoding.DecodeString(seed)
+        if err != nil </span><span class="cov0" title="0">{
+                return []byte{}, []byte{}, err
+        }</span>
+        <span class="cov8" title="1">privateKey, publicKey, _ := sodium.CryptoSignSeedKeyPair(decodedSeed)
+        return privateKey, publicKey, nil</span>
+}
 
 // set a new value for a key inside a project
 func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error <span class="cov8" title="1">{
