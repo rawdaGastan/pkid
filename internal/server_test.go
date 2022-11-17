@@ -18,7 +18,7 @@ import (
 
 func TestPkidStore(t *testing.T) {
 	testDir := t.TempDir()
-	pkidStore := newPkidStore()
+	pkidStore := NewSqliteStore()
 
 	t.Run("test_empty_file", func(t *testing.T) {
 		err := pkidStore.setConn("")
@@ -156,11 +156,12 @@ func TestPkidStore(t *testing.T) {
 
 func TestServer(t *testing.T) {
 	testDir := t.TempDir()
+	pkidStore := NewSqliteStore()
 
 	logger := zerolog.New(os.Stdout).With().Logger()
 	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
 
-	router := newRouter(logger)
+	router := newRouter(logger, pkidStore)
 	err := router.setConn(testDir + "/pkid.db")
 
 	if err != nil {
@@ -168,7 +169,7 @@ func TestServer(t *testing.T) {
 	}
 
 	t.Run("test_failed_server", func(t *testing.T) {
-		_, err := NewServer(logger, []http.Handler{}, "", 3000)
+		_, err := NewServer(logger, []mux.MiddlewareFunc{}, pkidStore, "", 3000)
 
 		if err == nil {
 			t.Errorf("expected error got nil")

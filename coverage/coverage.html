@@ -57,11 +57,11 @@
 				
 				<option value="file0">github.com/rawdaGastan/pkid/client/pkid_client.go (78.9%)</option>
 				
-				<option value="file1">github.com/rawdaGastan/pkid/internal/pkid_store.go (84.5%)</option>
+				<option value="file1">github.com/rawdaGastan/pkid/internal/routes.go (73.2%)</option>
 				
-				<option value="file2">github.com/rawdaGastan/pkid/internal/routes.go (73.2%)</option>
+				<option value="file2">github.com/rawdaGastan/pkid/internal/server.go (8.0%)</option>
 				
-				<option value="file3">github.com/rawdaGastan/pkid/internal/server.go (8.0%)</option>
+				<option value="file3">github.com/rawdaGastan/pkid/internal/sqlite_store.go (84.1%)</option>
 				
 				<option value="file4">github.com/rawdaGastan/pkid/internal/verify.go (87.5%)</option>
 				
@@ -358,186 +358,9 @@ func (pc *PkidClient) Delete(project string, key string) error <span class="cov8
 		<pre class="file" id="file1" style="display: none">package internal
 
 import (
-        "database/sql"
-        "errors"
-
-        "github.com/mattn/go-sqlite3"
-)
-
-var (
-        ErrNotExists    = errors.New("row not exist")
-        ErrSetFailed    = errors.New("set failed")
-        ErrDeleteFailed = errors.New("delete failed")
-)
-
-type PkidStore interface {
-        setConn(string) error
-        migrate() error
-        get(string) (string, error)
-        set(string, string) error
-        update(string, string) error
-        delete(string) error
-        list() ([]string, error)
-}
-
-type sqlitePkidStore struct {
-        db *sql.DB
-}
-
-// new instance of sqlite database
-func newPkidStore() PkidStore <span class="cov8" title="1">{
-        newSqlitePkidStore := &amp;sqlitePkidStore{}
-        var pkidStore PkidStore = newSqlitePkidStore
-        return pkidStore
-}</span>
-
-// set the connection and filePath of the sqlite db
-func (sqlite *sqlitePkidStore) setConn(filePath string) error <span class="cov8" title="1">{
-        if filePath == "" </span><span class="cov8" title="1">{
-                return errors.New("no file path provided")
-        }</span>
-
-        <span class="cov8" title="1">db, err := sql.Open("sqlite3", filePath)
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-        <span class="cov8" title="1">sqlite.db = db
-        return nil</span>
-}
-
-// create a new table pkid includes 2 columns for key and value, key is unique
-func (sqlite *sqlitePkidStore) migrate() error <span class="cov8" title="1">{
-        query := `
-    CREATE TABLE IF NOT EXISTS pkid(
-        key TEXT NOT NULL UNIQUE,
-        value TEXT NOT NULL
-    );
-    `
-        _, err := sqlite.db.Exec(query)
-        return err
-}</span>
-
-// add a new row in the table pkid with key and value
-func (sqlite *sqlitePkidStore) set(key string, value string) error <span class="cov8" title="1">{
-        if key == "" </span><span class="cov8" title="1">{
-                return errors.New("invalid key")
-        }</span>
-
-        <span class="cov8" title="1">res, err := sqlite.db.Exec("INSERT INTO pkid(key, value) values(?,?)", key, value)
-        if err != nil </span><span class="cov8" title="1">{
-                var sqliteErr sqlite3.Error
-                if errors.As(err, &amp;sqliteErr) </span><span class="cov8" title="1">{
-                        if errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) </span><span class="cov8" title="1">{
-                                return sqlite.update(key, value)
-                        }</span>
-                }
-                <span class="cov0" title="0">return err</span>
-        }
-
-        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-
-        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov0" title="0">{
-                return ErrSetFailed
-        }</span>
-
-        <span class="cov8" title="1">return nil</span>
-}
-
-// get the value of the given key in the table pkid
-func (sqlite *sqlitePkidStore) get(key string) (string, error) <span class="cov8" title="1">{
-        if key == "" </span><span class="cov8" title="1">{
-                return "", errors.New("invalid key")
-        }</span>
-
-        <span class="cov8" title="1">row := sqlite.db.QueryRow("SELECT * FROM pkid WHERE key = ?", key)
-
-        var value string
-        if err := row.Scan(&amp;key, &amp;value); err != nil </span><span class="cov8" title="1">{
-                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
-                        return "", ErrNotExists
-                }</span>
-                <span class="cov0" title="0">return "", err</span>
-        }
-        <span class="cov8" title="1">return value, nil</span>
-}
-
-// update a row in the table pkid with key and value
-func (sqlite *sqlitePkidStore) update(key string, value string) error <span class="cov8" title="1">{
-        if key == "" </span><span class="cov8" title="1">{
-                return errors.New("invalid updated ID")
-        }</span>
-        <span class="cov8" title="1">res, err := sqlite.db.Exec("UPDATE pkid SET value = ?", value)
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-
-        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-
-        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
-                return ErrSetFailed
-        }</span>
-
-        <span class="cov8" title="1">return nil</span>
-}
-
-// delete the value of the given key in the table pkid
-func (sqlite *sqlitePkidStore) delete(key string) error <span class="cov8" title="1">{
-        if key == "" </span><span class="cov8" title="1">{
-                return errors.New("invalid key")
-        }</span>
-
-        <span class="cov8" title="1">res, err := sqlite.db.Exec("DELETE FROM pkid WHERE key = ?", key)
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-
-        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
-        if err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-
-        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
-                return ErrDeleteFailed
-        }</span>
-
-        <span class="cov8" title="1">return err</span>
-}
-
-// get all keys in the table pkid
-func (sqlite *sqlitePkidStore) list() ([]string, error) <span class="cov8" title="1">{
-        rows, err := sqlite.db.Query("SELECT * FROM pkid")
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, err
-        }</span>
-        <span class="cov8" title="1">defer rows.Close()
-
-        var all []string
-        for rows.Next() </span><span class="cov8" title="1">{
-                var key string
-                var value string
-                if err := rows.Scan(&amp;key, &amp;value); err != nil </span><span class="cov0" title="0">{
-                        return nil, err
-                }</span>
-
-                <span class="cov8" title="1">all = append(all, key)</span>
-        }
-        <span class="cov8" title="1">return all, nil</span>
-}
-</pre>
-		
-		<pre class="file" id="file2" style="display: none">package internal
-
-import (
         "bytes"
         "encoding/hex"
         "encoding/json"
-        "errors"
         "fmt"
         "net/http"
         "strings"
@@ -552,26 +375,20 @@ type router struct {
 }
 
 // create a new instance of the router
-func newRouter(logger zerolog.Logger) router <span class="cov8" title="1">{
+func newRouter(logger zerolog.Logger, db PkidStore) router <span class="cov8" title="1">{
         return router{
+                db:     db,
                 logger: logger,
         }
 }</span>
 
 // set the connection and migration of the db
 func (r *router) setConn(filePath string) error <span class="cov8" title="1">{
-        if filePath == "" </span><span class="cov0" title="0">{
-                return errors.New("no file path provided")
-        }</span>
-
-        <span class="cov8" title="1">db := newPkidStore()
-        db.setConn(filePath)
-        if err := db.migrate(); err != nil </span><span class="cov0" title="0">{
+        r.db.setConn(filePath)
+        if err := r.db.migrate(); err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-
-        <span class="cov8" title="1">r.db = db
-        return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // get the value of the given key, using the public key
@@ -781,7 +598,7 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) <span class="
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package internal
+		<pre class="file" id="file2" style="display: none">package internal
 
 import (
         "errors"
@@ -802,13 +619,13 @@ type server struct {
 }
 
 // create a new instance of the server
-func NewServer(logger zerolog.Logger, handlers []http.Handler, filePath string, port int) (server, error) <span class="cov8" title="1">{
+func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidStore, filePath string, port int) (server, error) <span class="cov8" title="1">{
         if filePath == "" </span><span class="cov8" title="1">{
                 return server{}, errors.New("no file path provided")
         }</span>
 
         // set the router DB
-        <span class="cov0" title="0">router := newRouter(logger)
+        <span class="cov0" title="0">router := newRouter(logger, pkidStore)
         err := router.setConn(filePath)
         if err != nil </span><span class="cov0" title="0">{
                 return server{}, fmt.Errorf("error starting server database: %w", err)
@@ -825,12 +642,12 @@ func NewServer(logger zerolog.Logger, handlers []http.Handler, filePath string, 
         muxRouter.HandleFunc("/{pk}/{project}", router.deleteProject).Methods("DELETE")
         muxRouter.HandleFunc("/{pk}/{project}/{key}", router.delete).Methods("DELETE")
 
-        muxHandler.Handle("/", muxRouter)
-        for _, handler := range handlers </span><span class="cov0" title="0">{
-                muxHandler.Handle("/", handler)
+        for _, mw := range mws </span><span class="cov0" title="0">{
+                muxRouter.Use(mw)
         }</span>
+        <span class="cov0" title="0">muxHandler.Handle("/", muxRouter)
 
-        <span class="cov0" title="0">cfg := ServerCfgOptions{
+        cfg := ServerCfgOptions{
                 port: port,
         }
 
@@ -853,6 +670,170 @@ func (s *server) Start() error <span class="cov0" title="0">{
         }</span>
 
         <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package internal
+
+import (
+        "database/sql"
+        "errors"
+
+        "github.com/mattn/go-sqlite3"
+)
+
+var (
+        ErrNotExists    = errors.New("row not exist")
+        ErrSetFailed    = errors.New("set failed")
+        ErrDeleteFailed = errors.New("delete failed")
+)
+
+type sqliteStore struct {
+        db *sql.DB
+}
+
+// new instance of sqlite database
+func NewSqliteStore() *sqliteStore <span class="cov8" title="1">{
+        return &amp;sqliteStore{}
+}</span>
+
+// set the connection and filePath of the sqlite db
+func (sqlite *sqliteStore) setConn(filePath string) error <span class="cov8" title="1">{
+        if filePath == "" </span><span class="cov8" title="1">{
+                return errors.New("no file path provided")
+        }</span>
+
+        <span class="cov8" title="1">db, err := sql.Open("sqlite3", filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">sqlite.db = db
+        return nil</span>
+}
+
+// create a new table pkid includes 2 columns for key and value, key is unique
+func (sqlite *sqliteStore) migrate() error <span class="cov8" title="1">{
+        query := `
+    CREATE TABLE IF NOT EXISTS pkid(
+        key TEXT NOT NULL UNIQUE,
+        value TEXT NOT NULL
+    );
+    `
+        _, err := sqlite.db.Exec(query)
+        return err
+}</span>
+
+// add a new row in the table pkid with key and value
+func (sqlite *sqliteStore) set(key string, value string) error <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return errors.New("invalid key")
+        }</span>
+
+        <span class="cov8" title="1">res, err := sqlite.db.Exec("INSERT INTO pkid(key, value) values(?,?)", key, value)
+        if err != nil </span><span class="cov8" title="1">{
+                var sqliteErr sqlite3.Error
+                if errors.As(err, &amp;sqliteErr) </span><span class="cov8" title="1">{
+                        if errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) </span><span class="cov8" title="1">{
+                                return sqlite.update(key, value)
+                        }</span>
+                }
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov0" title="0">{
+                return ErrSetFailed
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// get the value of the given key in the table pkid
+func (sqlite *sqliteStore) get(key string) (string, error) <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return "", errors.New("invalid key")
+        }</span>
+
+        <span class="cov8" title="1">row := sqlite.db.QueryRow("SELECT * FROM pkid WHERE key = ?", key)
+
+        var value string
+        if err := row.Scan(&amp;key, &amp;value); err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return "", ErrNotExists
+                }</span>
+                <span class="cov0" title="0">return "", err</span>
+        }
+        <span class="cov8" title="1">return value, nil</span>
+}
+
+// update a row in the table pkid with key and value
+func (sqlite *sqliteStore) update(key string, value string) error <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return errors.New("invalid updated ID")
+        }</span>
+        <span class="cov8" title="1">res, err := sqlite.db.Exec("UPDATE pkid SET value = ?", value)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                return ErrSetFailed
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// delete the value of the given key in the table pkid
+func (sqlite *sqliteStore) delete(key string) error <span class="cov8" title="1">{
+        if key == "" </span><span class="cov8" title="1">{
+                return errors.New("invalid key")
+        }</span>
+
+        <span class="cov8" title="1">res, err := sqlite.db.Exec("DELETE FROM pkid WHERE key = ?", key)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := res.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if rowsAffected == 0 </span><span class="cov8" title="1">{
+                return ErrDeleteFailed
+        }</span>
+
+        <span class="cov8" title="1">return err</span>
+}
+
+// get all keys in the table pkid
+func (sqlite *sqliteStore) list() ([]string, error) <span class="cov8" title="1">{
+        rows, err := sqlite.db.Query("SELECT * FROM pkid")
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+
+        var all []string
+        for rows.Next() </span><span class="cov8" title="1">{
+                var key string
+                var value string
+                if err := rows.Scan(&amp;key, &amp;value); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">all = append(all, key)</span>
+        }
+        <span class="cov8" title="1">return all, nil</span>
 }
 </pre>
 		

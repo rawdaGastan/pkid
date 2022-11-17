@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -19,25 +18,19 @@ type router struct {
 }
 
 // create a new instance of the router
-func newRouter(logger zerolog.Logger) router {
+func newRouter(logger zerolog.Logger, db PkidStore) router {
 	return router{
+		db:     db,
 		logger: logger,
 	}
 }
 
 // set the connection and migration of the db
 func (r *router) setConn(filePath string) error {
-	if filePath == "" {
-		return errors.New("no file path provided")
-	}
-
-	db := newPkidStore()
-	db.setConn(filePath)
-	if err := db.migrate(); err != nil {
+	r.db.setConn(filePath)
+	if err := r.db.migrate(); err != nil {
 		return err
 	}
-
-	r.db = db
 	return nil
 }
 

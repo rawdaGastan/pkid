@@ -17,9 +17,11 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
+	"github.com/gorilla/mux"
 	"github.com/rawdaGastan/pkid/internal"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -49,7 +51,20 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		server, err := internal.NewServer(logger, []http.Handler{}, filePath, port)
+		// adding logging mw
+		mws := []mux.MiddlewareFunc{}
+		loggingMw := func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Do stuff here
+				log.Println(r.RequestURI)
+				// Call the next handler, which can be another middleware in the chain, or the final handler.
+				next.ServeHTTP(w, r)
+			})
+		}
+		mws = append(mws, loggingMw)
+
+		pkidStore := internal.NewSqliteStore()
+		server, err := internal.NewServer(logger, mws, pkidStore, filePath, port)
 		if err != nil {
 			logger.Error().Msg(fmt.Sprint("new pkid server failed with error: ", err))
 			return

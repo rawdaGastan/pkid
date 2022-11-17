@@ -19,13 +19,13 @@ type server struct {
 }
 
 // create a new instance of the server
-func NewServer(logger zerolog.Logger, handlers []http.Handler, filePath string, port int) (server, error) {
+func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidStore, filePath string, port int) (server, error) {
 	if filePath == "" {
 		return server{}, errors.New("no file path provided")
 	}
 
 	// set the router DB
-	router := newRouter(logger)
+	router := newRouter(logger, pkidStore)
 	err := router.setConn(filePath)
 	if err != nil {
 		return server{}, fmt.Errorf("error starting server database: %w", err)
@@ -42,10 +42,10 @@ func NewServer(logger zerolog.Logger, handlers []http.Handler, filePath string, 
 	muxRouter.HandleFunc("/{pk}/{project}", router.deleteProject).Methods("DELETE")
 	muxRouter.HandleFunc("/{pk}/{project}/{key}", router.delete).Methods("DELETE")
 
-	muxHandler.Handle("/", muxRouter)
-	for _, handler := range handlers {
-		muxHandler.Handle("/", handler)
+	for _, mw := range mws {
+		muxRouter.Use(mw)
 	}
+	muxHandler.Handle("/", muxRouter)
 
 	cfg := ServerCfgOptions{
 		port: port,
