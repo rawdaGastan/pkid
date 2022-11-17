@@ -4,36 +4,70 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
 )
 
-func StartServer(filename string, port string) {
-	// set the server
-	server := newServer()
-	err := server.setConn(filename)
-	if err != nil {
-		fmt.Print("error starting server database: \n", err)
-		os.Exit(1)
+type ServerCfgOptions struct {
+	port int
+}
+type server struct {
+	cfg     ServerCfgOptions
+	logger  zerolog.Logger
+	handler http.Handler
+}
+
+// create a new instance of the server
+func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidStore, filePath string, port int) (server, error) {
+	if filePath == "" {
+		return server{}, errors.New("no file path provided")
 	}
+
+	// set the router DB
+	router := newRouter(logger, pkidStore)
+	err := router.setConn(filePath)
+	if err != nil {
+		return server{}, fmt.Errorf("error starting server database: %w", err)
+	}
+
+	muxHandler := http.NewServeMux()
 
 	// set the router
-	router := mux.NewRouter().StrictSlash(true)
+	muxRouter := mux.NewRouter().StrictSlash(true)
 
-	router.HandleFunc("/set/{pk}/{project}/{key}", server.set).Methods("POST")
-	router.HandleFunc("/get/{pk}/{project}/{key}", server.get).Methods("GET")
-	//router.HandleFunc("/list/{pk}/{project}", server.list).Methods("GET")
-	router.HandleFunc("/delete/{pk}/{project}/{key}", server.delete).Methods("DELETE")
+	muxRouter.HandleFunc("/{pk}/{project}/{key}", router.set).Methods("POST")
+	muxRouter.HandleFunc("/{pk}/{project}/{key}", router.get).Methods("GET")
+	muxRouter.HandleFunc("/{pk}/{project}", router.list).Methods("GET")
+	muxRouter.HandleFunc("/{pk}/{project}", router.deleteProject).Methods("DELETE")
+	muxRouter.HandleFunc("/{pk}/{project}/{key}", router.delete).Methods("DELETE")
 
-	// run server
-	fmt.Println("server is running at", port)
-	err = http.ListenAndServe(":"+port, router)
+	for _, mw := range mws {
+		muxRouter.Use(mw)
+	}
+	muxHandler.Handle("/", muxRouter)
+
+	cfg := ServerCfgOptions{
+		port: port,
+	}
+
+	return server{
+		logger:  logger,
+		handler: muxHandler,
+		cfg:     cfg,
+	}, nil
+}
+
+func (s *server) Start() error {
+
+	s.logger.Debug().Msg(fmt.Sprint("server is running at ", s.cfg.port))
+	err := http.ListenAndServe(fmt.Sprintf(":%v", s.cfg.port), s.handler)
 
 	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Print("server closed\n")
+		return errors.New("server closed")
 	} else if err != nil {
-		fmt.Print("error starting server: \n", err)
-		os.Exit(1)
+		return fmt.Errorf("starting server failed with error: %w", err)
 	}
+
+	return nil
 }

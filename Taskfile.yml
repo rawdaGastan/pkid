@@ -1,6 +1,17 @@
 version: "3"
 
 tasks:
+    build:
+        desc: Build the app
+        cmds:
+        - GOFLAGS=-mod=mod go build -o bin/pkid main.go 
+
+    start:
+        desc: start pkid server
+        cmds:
+        - task build
+        - ./bin/pkid -f pkid.db
+
     run: 
         desc: Run the app
         cmds:
@@ -47,3 +58,9 @@ tasks:
         cmds:
         - rm ./coverage -rf
         - rm ./bin -rf
+
+    swagger:
+        desc: Validate and generate swagger doc
+        cmds:
+        - swagger validate pkg/swagger/swagger.yml
+        - docker run -i yousan/swagger-yaml-to-html < pkg/swagger/swagger.yml > doc/index.html
