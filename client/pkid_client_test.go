@@ -2,12 +2,13 @@ package client
 
 import (
 	"testing"
+	"time"
 )
 
-func TestSqliteDB(t *testing.T) {
-	port := 3000
+func TestPkidClient(t *testing.T) {
+	url := "http://localhost:3000"
 	privateKey, publicKey := GenerateKeyPair()
-	pkidClient := NewPkidClient(privateKey, publicKey, port)
+	pkidClient := NewPkidClient(privateKey, publicKey, url, 5*time.Second)
 
 	t.Run("test_seed_key_pair", func(t *testing.T) {
 		seed := "bm2xl92552zz0Kxtvg4Gbaosnh6FY9H2WsIKao6Emh8="
@@ -48,6 +49,13 @@ func TestSqliteDB(t *testing.T) {
 
 	t.Run("test_delete", func(t *testing.T) {
 		err := pkidClient.Delete("pkid", "key")
+		if err != nil {
+			t.Errorf("delete should be successful: %v", err)
+		}
+	})
+
+	t.Run("test_delete_project", func(t *testing.T) {
+		err := pkidClient.DeleteProject("pkid")
 		if err != nil {
 			t.Errorf("delete should be successful: %v", err)
 		}

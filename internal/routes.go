@@ -4,42 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog"
 )
-
-type server struct {
-	db     *sqliteDB
-	logger zerolog.Logger
-}
-
-// create a new instance of the server
-func newServer(logger zerolog.Logger) server {
-	return server{
-		logger: logger,
-	}
-}
-
-// set the connection and migration of the db
-func (s *server) setConn(filePath string) error {
-	if filePath == "" {
-		return errors.New("no file path provided")
-	}
-
-	db := newSQLiteDB()
-	db.setConn(filePath)
-	if err := db.migrate(); err != nil {
-		return err
-	}
-
-	s.db = db
-	return nil
-}
 
 // get the value of the given key, using the public key
 func (s *server) get(w http.ResponseWriter, request *http.Request) {
@@ -53,7 +23,7 @@ func (s *server) get(w http.ResponseWriter, request *http.Request) {
 	value, err := s.db.get(docKey)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("can't find key: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("can't find key: ", err))
 		return
 	}
 
@@ -62,7 +32,7 @@ func (s *server) get(w http.ResponseWriter, request *http.Request) {
 	res, err := json.Marshal(map[string]string{"data": value, "msg": "data is got successfully"})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
 	w.Write(res)
@@ -74,10 +44,16 @@ func (s *server) list(w http.ResponseWriter, request *http.Request) {
 	pk := mux.Vars(request)["pk"]
 	project := mux.Vars(request)["project"]
 
+	if project == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		s.logger.Error().Msg("db list project failed with error: no project given")
+		return
+	}
+
 	AllKeys, err := s.db.list()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("db list failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("db list failed with error: ", err))
 		return
 	}
 
@@ -96,7 +72,47 @@ func (s *server) list(w http.ResponseWriter, request *http.Request) {
 	res, err := json.Marshal(map[string]any{"data": keys, "msg": "data is got successfully"})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
+		return
+	}
+	w.Write(res)
+}
+
+func (s *server) deleteProject(w http.ResponseWriter, request *http.Request) {
+
+	pk := mux.Vars(request)["pk"]
+	project := mux.Vars(request)["project"]
+
+	if project == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		s.logger.Error().Msg("db deleting project failed with error: no project given")
+		return
+	}
+
+	AllKeys, err := s.db.list()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		s.logger.Error().Msg(fmt.Sprint("db list failed with error: ", err))
+		return
+	}
+
+	for _, key := range AllKeys {
+		if strings.HasPrefix(key, pk+"_"+project+"_") {
+			err := s.db.delete(key)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				s.logger.Error().Msg(fmt.Sprintf("db deleting key %v failed with error: %v", key, err))
+				return
+			}
+		}
+	}
+
+	w.WriteHeader(202)
+	w.Header().Set("Content-Type", "application/json")
+	res, err := json.Marshal(map[string]string{"msg": "data is deleted successfully"})
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
 	w.Write(res)
@@ -114,7 +130,7 @@ func (s *server) delete(w http.ResponseWriter, request *http.Request) {
 	err := s.db.delete(docKey)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("db deletion failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("db deletion failed with error: ", err))
 		return
 	}
 
@@ -123,7 +139,7 @@ func (s *server) delete(w http.ResponseWriter, request *http.Request) {
 	res, err := json.Marshal(map[string]string{"msg": "data is deleted successfully"})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
 	w.Write(res)
@@ -146,7 +162,7 @@ func (s *server) set(w http.ResponseWriter, request *http.Request) {
 	verifyPk, err := hex.DecodeString(pk)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("can't decode public key: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("can't decode public key: ", err))
 		return
 	}
 
@@ -164,26 +180,28 @@ func (s *server) set(w http.ResponseWriter, request *http.Request) {
 	}
 
 	// verify
-	verified, err := verifySignedData(s.logger, body, verifyPk)
+	verified, err := verifySignedData(body, verifyPk)
 	if !verified || err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("invalid data: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("invalid data: ", err))
 		return
 	}
+	s.logger.Debug().Msg(fmt.Sprint("signed body is verified: ", verified))
 
-	authHeader, err := verifySignedHeader(s.logger, request.Header.Get("Authorization"), verifyPk)
+	authHeader, err := verifySignedHeader(request.Header.Get("Authorization"), verifyPk)
 	if !authHeader || err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("invalid authorization header: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("invalid authorization header: ", err))
 		return
 	}
+	s.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", err))
 
 	// set date
 	docKey := pk + "_" + projectKey
 	err = s.db.set(docKey, body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("database set failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("database set failed with error: ", err))
 		return
 	}
 
@@ -193,7 +211,7 @@ func (s *server) set(w http.ResponseWriter, request *http.Request) {
 	res, err := json.Marshal(map[string]string{"msg": "data is set successfully"})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Error().Msg("response failed with error: " + fmt.Sprint(err))
+		s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
 	w.Write(res)

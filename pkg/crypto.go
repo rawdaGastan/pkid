@@ -1,9 +1,8 @@
-package client
+package pkg
 
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/GoKillers/libsodium-go/cryptobox"
@@ -30,7 +29,7 @@ func SignEncode(payload map[string]interface{}, privateKey []byte) (string, erro
 }
 
 // verify the signed data (value) of the set request body
-func verifySignedData(data string, pk []byte) ([]byte, error) {
+func VerifySignedData(data string, pk []byte) ([]byte, error) {
 
 	// pk in bytes
 	verifyPk := [32]byte{}
@@ -45,17 +44,17 @@ func verifySignedData(data string, pk []byte) ([]byte, error) {
 	verifiedContent, verified := sign.Open(decodedDataOut, decodedData, &verifyPk)
 
 	if !verified {
-		return []byte{}, errors.New("verifying data failed, " + fmt.Sprint(verified))
+		return []byte{}, fmt.Errorf("verifying data failed, %v", verified)
 	}
 
 	return verifiedContent, nil
 }
 
-func encrypt(payload string, publicKey []byte) (string, error) {
+func Encrypt(payload string, publicKey []byte) (string, error) {
 	message, err := json.Marshal(payload)
 
 	if err != nil {
-		return "", errors.New("marshal payload failed with error, " + fmt.Sprint(err))
+		return "", fmt.Errorf("marshal payload failed with error, %w", err)
 	}
 
 	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
@@ -64,10 +63,10 @@ func encrypt(payload string, publicKey []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(encryptedMessage), nil
 }
 
-func decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error) {
+func Decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error) {
 	decodedCipher, err := base64.StdEncoding.DecodeString(cipher)
 	if err != nil {
-		return "", errors.New("decoding cipher text failed with error, " + fmt.Sprint(err))
+		return "", fmt.Errorf("decoding cipher text failed with error: %w", err)
 	}
 
 	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)

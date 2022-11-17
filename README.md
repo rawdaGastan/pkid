@@ -7,7 +7,7 @@ PKID is a public Key Indexed Datastore. You can save plain or encrypted data in 
 ### Set document
 
 ```api
-POST /set/{pk}/{project}/{key}
+POST /{pk}/{project}/{key}
 ```
 
 Set the value of a document corresponding to {key} inside a {project} indexed by the public key {pk}. This is only possible when sending following header; signed by the private key corresponding to {pk}.
@@ -28,7 +28,7 @@ header is base64 encoded and signed;
 ### Get document
 
 ```api
-GET /get/{pk}/{project}/{key}
+GET /{pk}/{project}/{key}
 ```
 
 Get the value of a document corresponding to {key} inside a {project} indexed by the public key {pk}. There is no requirement for a security header
@@ -39,7 +39,7 @@ response data is base64 encoded;
 ### Delete document
 
 ```api
-DELETE /delete/{pk}/{project}/{key}
+DELETE /{pk}/{project}/{key}
 ```
 
 Delete the value of a document corresponding to {key} inside a {project} indexed by the public key {pk}. There is no requirement for a security header
@@ -49,7 +49,7 @@ pk is hex encoded;
 ### List
 
 ```api
-GET /list/{pk}/{project}
+GET /{pk}/{project}
 ```
 
 Get the keys of a {project} indexed by the public key {pk}. There is no requirement for a security header
@@ -97,8 +97,9 @@ task coverage
 import "github.com/rawdaGastan/pkid/client"
 
 privateKey, publicKey := GenerateKeyPair()
-port := 3000
-pkidClient := NewPkidClient(privateKey, publicKey, port)
+serverUrl := "http://localhost:3000"
+timeout := 5 * time.Second
+pkidClient := NewPkidClient(privateKey, publicKey, serverUrl, timeout)
 
 err := pkidClient.Set("pkid", "key", "value", true)
 value, err := pkidClient.Get("pkid", "key")
@@ -116,6 +117,7 @@ import "github.com/rawdaGastan/pkid/client"
 
 seed := <your seed>
 privateKey, publicKey, err := GenerateKeyPairUsingSeed(seed)
-port := 3000
-pkidClient := NewPkidClient(privateKey, publicKey, port)
+serverUrl := "http://localhost:3000"
+timeout := 5 * time.Second
+pkidClient := NewPkidClient(privateKey, publicKey, serverUrl, timeout)
 ```

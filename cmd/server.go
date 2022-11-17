@@ -33,7 +33,7 @@ var rootCmd = &cobra.Command{
 
 		filePath, err := cmd.Flags().GetString("file")
 		if err != nil {
-			logger.Error().Msg("start pkid server failed with error: " + fmt.Sprint(err))
+			logger.Error().Msg(fmt.Sprint("start pkid server failed with error: ", err))
 			return
 		}
 
@@ -44,13 +44,13 @@ var rootCmd = &cobra.Command{
 
 		port, err := cmd.Flags().GetInt("port")
 		if err != nil {
-			logger.Error().Msg("start pkid server failed with error: " + fmt.Sprint(err))
+			logger.Error().Msg(fmt.Sprint("start pkid server failed with error: ", err))
 			return
 		}
 
 		err = internal.StartServer(logger, filePath, port)
 		if err != nil {
-			logger.Error().Msg("start pkid server failed with error: " + fmt.Sprint(err))
+			logger.Error().Msg(fmt.Sprint("start pkid server failed with error: ", err))
 			return
 		}
 

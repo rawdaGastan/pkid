@@ -2,7 +2,7 @@ consumes:
 - application/json
 info:
   description: HTTP server in Go with Swagger endpoints definition.
-  title: urls-checker-api
+  title: pkid api
   version: 0.1.0
 produces:
 - application/json
@@ -11,7 +11,7 @@ schemes:
 swagger: "2.0"
 
 paths:
-  /get/{pk}/{project}/{key}:
+  /{pk}/{project}/{key}:
     get:
       description: Returns the value of the given key inside the given project
       parameters:
@@ -36,7 +36,6 @@ paths:
           schema:
             $ref: '#/definitions/GetResponse' 
 
-  /set/{pk}/{project}/{key}:
     post:
       description: set a new value for the given key of the project
       consumes:
@@ -72,27 +71,6 @@ paths:
           schema:
             $ref: '#/definitions/Response' 
 
-  /list/{pk}/{project}:
-    get:
-      description: Get all keys inside a project
-      parameters:
-        - name: pk
-          in: path
-          description: primary key of the user
-          required: true
-          type: string
-        - name: project
-          in: path
-          description: the name of the project
-          required: true
-          type: string
-      responses:
-        200:
-          description: all keys are got
-          schema:
-            $ref: '#/definitions/ListResponse' 
-  
-  /delete/{pk}/{project}/{key}:
     delete:
       description: delete the value for the given key of the project
       parameters:
@@ -117,6 +95,25 @@ paths:
           schema:
             $ref: '#/definitions/Response' 
 
+  /{pk}/{project}:
+    get:
+      description: Get all keys inside a project
+      parameters:
+        - name: pk
+          in: path
+          description: primary key of the user
+          required: true
+          type: string
+        - name: project
+          in: path
+          description: the name of the project
+          required: true
+          type: string
+      responses:
+        200:
+          description: all keys are got
+          schema:
+            $ref: '#/definitions/ListResponse' 
   
 definitions:
   Key:

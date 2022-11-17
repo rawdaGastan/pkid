@@ -12,15 +12,16 @@ import (
 
 	sodium "github.com/gokillers/libsodium-go/cryptosign"
 	"github.com/gorilla/mux"
-	"github.com/rawdaGastan/pkid/client"
+	"github.com/rawdaGastan/pkid/pkg"
 	"github.com/rs/zerolog"
 )
 
-func TestSqliteDB(t *testing.T) {
-	sqliteDB := newSQLiteDB()
+func TestPkidStore(t *testing.T) {
+	testDir := t.TempDir()
+	pkidStore := newPkidStore()
 
 	t.Run("test_empty_file", func(t *testing.T) {
-		err := sqliteDB.setConn("")
+		err := pkidStore.setConn("")
 
 		if err == nil {
 			t.Errorf("connection should not be set")
@@ -28,7 +29,7 @@ func TestSqliteDB(t *testing.T) {
 	})
 
 	t.Run("test_connection", func(t *testing.T) {
-		err := sqliteDB.setConn("../pkid.db")
+		err := pkidStore.setConn(testDir + "/pkid.db")
 
 		if err != nil {
 			t.Errorf("connection should be set")
@@ -36,28 +37,28 @@ func TestSqliteDB(t *testing.T) {
 	})
 
 	t.Run("test_migrate", func(t *testing.T) {
-		err := sqliteDB.migrate()
+		err := pkidStore.migrate()
 		if err != nil {
 			t.Errorf("migration should succeed")
 		}
 	})
 
 	t.Run("test_set", func(t *testing.T) {
-		err := sqliteDB.set("key", "value")
+		err := pkidStore.set("key", "value")
 		if err != nil {
 			t.Errorf("set should succeed")
 		}
 	})
 
 	t.Run("test_set_update", func(t *testing.T) {
-		err := sqliteDB.set("key", "valueUpdated")
+		err := pkidStore.set("key", "valueUpdated")
 		if err != nil {
 			t.Errorf("set should succeed")
 		}
 	})
 
 	t.Run("test_get", func(t *testing.T) {
-		value, err := sqliteDB.get("key")
+		value, err := pkidStore.get("key")
 		if err != nil {
 			t.Errorf("get should not fail: %v", err)
 		}
@@ -68,7 +69,7 @@ func TestSqliteDB(t *testing.T) {
 	})
 
 	t.Run("test_list", func(t *testing.T) {
-		keys, err := sqliteDB.list()
+		keys, err := pkidStore.list()
 		if err != nil {
 			t.Errorf("list should not fail: %v", err)
 		}
@@ -79,28 +80,28 @@ func TestSqliteDB(t *testing.T) {
 	})
 
 	t.Run("test_delete", func(t *testing.T) {
-		err := sqliteDB.delete("key")
+		err := pkidStore.delete("key")
 		if err != nil {
 			t.Errorf("delete should not fail: %v", err)
 		}
 	})
 
 	t.Run("test_get_deleted", func(t *testing.T) {
-		_, err := sqliteDB.get("key")
+		_, err := pkidStore.get("key")
 		if err == nil {
 			t.Errorf("get should fail")
 		}
 	})
 
 	t.Run("test_delete_deleted", func(t *testing.T) {
-		err := sqliteDB.delete("key")
+		err := pkidStore.delete("key")
 		if err == nil {
 			t.Errorf("delete should fail")
 		}
 	})
 
 	t.Run("test_list_empty", func(t *testing.T) {
-		keys, err := sqliteDB.list()
+		keys, err := pkidStore.list()
 		if err != nil {
 			t.Errorf("list should not fail: %v", err)
 		}
@@ -111,42 +112,42 @@ func TestSqliteDB(t *testing.T) {
 	})
 
 	t.Run("test_set_empty", func(t *testing.T) {
-		err := sqliteDB.set("", "value")
+		err := pkidStore.set("", "value")
 		if err == nil {
 			t.Errorf("set should fail")
 		}
 	})
 
 	t.Run("test_set_update_empty", func(t *testing.T) {
-		err := sqliteDB.set("", "valueUpdated")
+		err := pkidStore.set("", "valueUpdated")
 		if err == nil {
 			t.Errorf("set should fail")
 		}
 	})
 
 	t.Run("test_get_empty", func(t *testing.T) {
-		_, err := sqliteDB.get("")
+		_, err := pkidStore.get("")
 		if err == nil {
 			t.Errorf("get should fail")
 		}
 	})
 
 	t.Run("test_delete_empty", func(t *testing.T) {
-		err := sqliteDB.delete("")
+		err := pkidStore.delete("")
 		if err == nil {
 			t.Errorf("delete should fail")
 		}
 	})
 
 	t.Run("test_update_empty", func(t *testing.T) {
-		err := sqliteDB.update("", "value")
+		err := pkidStore.update("", "value")
 		if err == nil {
 			t.Errorf("update should fail")
 		}
 	})
 
 	t.Run("test_update_empty", func(t *testing.T) {
-		err := sqliteDB.update("key", "value")
+		err := pkidStore.update("key", "value")
 		if err == nil {
 			t.Errorf("update should fail")
 		}
@@ -154,14 +155,16 @@ func TestSqliteDB(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
+	testDir := t.TempDir()
+
 	logger := zerolog.New(os.Stdout).With().Logger()
 	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
 
 	server := newServer(logger)
-	err := server.setConn("../pkid.db")
+	err := server.setConn(testDir + "/pkid.db")
 
 	if err != nil {
-		t.Errorf("error starting server database: %v", fmt.Sprint(err))
+		t.Errorf(fmt.Sprint("error starting server database: ", err))
 	}
 
 	t.Run("test_failed_server", func(t *testing.T) {
@@ -185,12 +188,12 @@ func TestServer(t *testing.T) {
 			"data_version": 1,
 		}
 
-		signedBody, err := client.SignEncode(payload, privateKey)
+		signedBody, err := pkg.SignEncode(payload, privateKey)
 		if err != nil {
 			t.Errorf("error sign body: %v", err)
 		}
 
-		signedHeader, err := client.SignEncode(header, privateKey)
+		signedHeader, err := pkg.SignEncode(header, privateKey)
 		if err != nil {
 			t.Errorf("error sign header: %v", err)
 		}
@@ -199,8 +202,8 @@ func TestServer(t *testing.T) {
 		jsonBody := []byte(signedBody)
 		bodyReader := bytes.NewReader(jsonBody)
 
-		requestURL := fmt.Sprintf("/set/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
-		req := httptest.NewRequest(http.MethodGet, requestURL, bodyReader)
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		req := httptest.NewRequest(http.MethodPost, requestURL, bodyReader)
 
 		req.Header.Set("Authorization", signedHeader)
 		req.Header.Set("Content-Type", "application/json")
@@ -232,12 +235,12 @@ func TestServer(t *testing.T) {
 			"data_version": 1,
 		}
 
-		signedBody, err := client.SignEncode(payload, privateKey)
+		signedBody, err := pkg.SignEncode(payload, privateKey)
 		if err != nil {
 			t.Errorf("error sign body: %v", err)
 		}
 
-		signedHeader, err := client.SignEncode(header, privateKey)
+		signedHeader, err := pkg.SignEncode(header, privateKey)
 		if err != nil {
 			t.Errorf("error sign header: %v", err)
 		}
@@ -246,8 +249,8 @@ func TestServer(t *testing.T) {
 		jsonBody := []byte(signedBody)
 		bodyReader := bytes.NewReader(jsonBody)
 
-		requestURL := fmt.Sprintf("/set/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
-		req := httptest.NewRequest(http.MethodGet, requestURL, bodyReader)
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		req := httptest.NewRequest(http.MethodPost, requestURL, bodyReader)
 
 		req.Header.Set("Authorization", signedHeader)
 		req.Header.Set("Content-Type", "application/json")
@@ -273,14 +276,14 @@ func TestServer(t *testing.T) {
 			"timestamp": time.Now().Unix(),
 		}
 
-		signedHeader, err := client.SignEncode(header, privateKey)
+		signedHeader, err := pkg.SignEncode(header, privateKey)
 		if err != nil {
 			t.Errorf("error sign header: %v", err)
 		}
 
 		// set request
-		requestURL := fmt.Sprintf("/set/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
-		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		req := httptest.NewRequest(http.MethodPost, requestURL, nil)
 
 		req.Header.Set("Authorization", signedHeader)
 
@@ -307,7 +310,7 @@ func TestServer(t *testing.T) {
 			"data_version": 1,
 		}
 
-		signedBody, err := client.SignEncode(payload, privateKey)
+		signedBody, err := pkg.SignEncode(payload, privateKey)
 		if err != nil {
 			t.Errorf("error sign body: %v", err)
 		}
@@ -316,8 +319,8 @@ func TestServer(t *testing.T) {
 		jsonBody := []byte(signedBody)
 		bodyReader := bytes.NewReader(jsonBody)
 
-		requestURL := fmt.Sprintf("/set/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
-		req := httptest.NewRequest(http.MethodGet, requestURL, bodyReader)
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		req := httptest.NewRequest(http.MethodPost, requestURL, bodyReader)
 
 		req.Header.Set("Content-Type", "application/json")
 
@@ -344,7 +347,7 @@ func TestServer(t *testing.T) {
 			"data_version": 1,
 		}
 
-		signedBody, err := client.SignEncode(payload, privateKey)
+		signedBody, err := pkg.SignEncode(payload, privateKey)
 		if err != nil {
 			t.Errorf("error sign body: %v", err)
 		}
@@ -353,8 +356,8 @@ func TestServer(t *testing.T) {
 		jsonBody := []byte(signedBody)
 		bodyReader := bytes.NewReader(jsonBody)
 
-		requestURL := fmt.Sprintf("/set/%v/%v/%v", hex.EncodeToString([]byte{}), "pkid", "key")
-		req := httptest.NewRequest(http.MethodGet, requestURL, bodyReader)
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString([]byte{}), "pkid", "key")
+		req := httptest.NewRequest(http.MethodPost, requestURL, bodyReader)
 
 		req.Header.Set("Content-Type", "application/json")
 
@@ -374,7 +377,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("test_get_server", func(t *testing.T) {
-		requestURL := fmt.Sprintf("/get/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
 		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
@@ -391,7 +394,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("test_get_empty_server", func(t *testing.T) {
-		requestURL := fmt.Sprintf("/get/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
 		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
@@ -408,7 +411,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("test_list_server", func(t *testing.T) {
-		requestURL := fmt.Sprintf("/list/%v/%v", hex.EncodeToString(publicKey), "pkid")
+		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "pkid")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
 		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
@@ -423,9 +426,25 @@ func TestServer(t *testing.T) {
 		}
 	})
 
-	t.Run("test_delete_server", func(t *testing.T) {
-		requestURL := fmt.Sprintf("/delete/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+	t.Run("test_list_empty_server", func(t *testing.T) {
+		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
+		w := httptest.NewRecorder()
+		req = mux.SetURLVars(req, map[string]string{
+			"pk":      hex.EncodeToString(publicKey),
+			"project": "",
+		})
+		server.list(w, req)
+		res := w.Result()
+		defer res.Body.Close()
+		if res.StatusCode == 200 {
+			t.Errorf("list should fail")
+		}
+	})
+
+	t.Run("test_delete_server", func(t *testing.T) {
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
+		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
 		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
@@ -441,8 +460,8 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("test_delete_empty_server", func(t *testing.T) {
-		requestURL := fmt.Sprintf("/delete/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "")
-		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "")
+		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
 		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
@@ -450,6 +469,38 @@ func TestServer(t *testing.T) {
 			"key":     "",
 		})
 		server.delete(w, req)
+		res := w.Result()
+		defer res.Body.Close()
+		if res.StatusCode == 202 {
+			t.Errorf("delete should fail")
+		}
+	})
+
+	t.Run("test_delete_project_server", func(t *testing.T) {
+		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "pkid")
+		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
+		w := httptest.NewRecorder()
+		req = mux.SetURLVars(req, map[string]string{
+			"pk":      hex.EncodeToString(publicKey),
+			"project": "pkid",
+		})
+		server.deleteProject(w, req)
+		res := w.Result()
+		defer res.Body.Close()
+		if res.StatusCode != 202 {
+			t.Errorf("delete should be successful")
+		}
+	})
+
+	t.Run("test_delete_project_empty_server", func(t *testing.T) {
+		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "")
+		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
+		w := httptest.NewRecorder()
+		req = mux.SetURLVars(req, map[string]string{
+			"pk":      hex.EncodeToString(publicKey),
+			"project": "",
+		})
+		server.deleteProject(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 202 {

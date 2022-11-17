@@ -5,29 +5,29 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	sodium "github.com/gokillers/libsodium-go/cryptosign"
+	"github.com/rawdaGastan/pkid/pkg"
 )
 
 type PkidClient struct {
 	client     http.Client
-	port       int
+	serverUrl  string
 	privateKey []byte
 	publicKey  []byte
 }
 
 // create a new instance from the pkid client
-func NewPkidClient(privateKey []byte, publicKey []byte, port int) PkidClient {
-	client := http.Client{Timeout: 5 * time.Second}
+func NewPkidClient(privateKey []byte, publicKey []byte, url string, timeout time.Duration) PkidClient {
+	client := http.Client{Timeout: timeout}
 
 	return PkidClient{
 		client:     client,
-		port:       port,
+		serverUrl:  url,
 		privateKey: privateKey,
 		publicKey:  publicKey,
 	}
@@ -54,9 +54,9 @@ func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) {
 func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error {
 
 	if willEncrypt {
-		decryptedValue, err := encrypt(value, pc.publicKey)
+		decryptedValue, err := pkg.Encrypt(value, pc.publicKey)
 		if err != nil {
-			return errors.New("encryption failed with error: " + fmt.Sprint(err))
+			return fmt.Errorf("encryption failed with error: %w", err)
 		}
 
 		value = decryptedValue
@@ -73,24 +73,24 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 		"data_version": 1,
 	}
 
-	signedBody, err := SignEncode(payload, pc.privateKey)
+	signedBody, err := pkg.SignEncode(payload, pc.privateKey)
 	if err != nil {
-		return errors.New("error sign body: " + fmt.Sprint(err))
+		return fmt.Errorf("error sign body: %w", err)
 	}
 
-	signedHeader, err := SignEncode(header, pc.privateKey)
+	signedHeader, err := pkg.SignEncode(header, pc.privateKey)
 	if err != nil {
-		return errors.New("error sign header: " + fmt.Sprint(err))
+		return fmt.Errorf("error sign header: %w", err)
 	}
 
 	// set request
 	jsonBody := []byte(signedBody)
 	bodyReader := bytes.NewReader(jsonBody)
 
-	requestURL := fmt.Sprintf("http://localhost:%v/set/%v/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project, key)
+	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
 	request, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
 	if err != nil {
-		return errors.New("set request failed with error: " + fmt.Sprint(err))
+		return fmt.Errorf("set request failed with error: %w", err)
 	}
 
 	request.Header.Set("Authorization", signedHeader)
@@ -98,24 +98,21 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 
 	response, err := pc.client.Do(request)
 	if err != nil {
-		return errors.New("set response failed with error: " + fmt.Sprint(err))
+		return fmt.Errorf("set response failed with error: %w", err)
 	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return errors.New("read response body failed: " + fmt.Sprint(err))
+		return fmt.Errorf("read response body failed: %w", err)
 	}
 
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
-		return errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+		return fmt.Errorf("unmarshal response body failed: %w", err)
 	}
-
-	msg := data["msg"].(string)
-	fmt.Println(msg)
 
 	return err
 }
@@ -123,56 +120,53 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 // get a value for a key inside a project
 func (pc *PkidClient) Get(project string, key string) (string, error) {
 
-	requestURL := fmt.Sprintf("http://localhost:%v/get/%v/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project, key)
+	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
 	request, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		return "", errors.New("get request failed with error: " + fmt.Sprint(err))
+		return "", fmt.Errorf("get request failed with error: %w", err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := pc.client.Do(request)
 	if err != nil {
-		return "", errors.New("get response failed with error: " + fmt.Sprint(err))
+		return "", fmt.Errorf("get response failed with error: %w", err)
 	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", errors.New("read response body failed: " + fmt.Sprint(err))
+		return "", fmt.Errorf("read response body failed with error: %w", err)
 	}
 
 	var data map[string]string
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
-		return "", errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+		return "", fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
-
-	msg := data["msg"]
-	fmt.Println(msg)
 
 	signedPayload := data["data"]
 
-	payload, err := verifySignedData(signedPayload, pc.publicKey)
+	payload, err := pkg.VerifySignedData(signedPayload, pc.publicKey)
 	if err != nil {
-		return "", errors.New("verifying data failed: " + fmt.Sprint(err))
+		return "", fmt.Errorf("verifying data failed with error: %w", err)
 	}
 
 	var jsonPayload map[string]interface{}
 	err = json.Unmarshal(payload, &jsonPayload)
 
 	if err != nil {
-		return "", errors.New("unmarshal payload failed: " + fmt.Sprint(err))
+		return "", fmt.Errorf("unmarshal payload failed with error: %w", err)
 	}
 
 	is_encrypted := jsonPayload["is_encrypted"].(bool)
 	value := jsonPayload["payload"].(string)
 
 	if is_encrypted {
-		value, err = decrypt(value, pc.publicKey, pc.privateKey)
+		value, err = pkg.Decrypt(value, pc.publicKey, pc.privateKey)
 		if err != nil {
-			return "", errors.New("decrypting value failed with error, " + fmt.Sprint(err))
+			return "", fmt.Errorf("decrypting value failed with error: %w", err)
 		}
 	}
 
@@ -182,30 +176,30 @@ func (pc *PkidClient) Get(project string, key string) (string, error) {
 // list all keys for a project
 func (pc *PkidClient) List(project string) ([]string, error) {
 
-	requestURL := fmt.Sprintf("http://localhost:%v/list/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project)
+	requestURL := fmt.Sprintf("%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project)
 	request, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		return []string{}, errors.New("get request failed with error: " + fmt.Sprint(err))
+		return []string{}, fmt.Errorf("get request failed with error: %w", err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := pc.client.Do(request)
 	if err != nil {
-		return []string{}, errors.New("get response failed with error: " + fmt.Sprint(err))
+		return []string{}, fmt.Errorf("get response failed with error: %w", err)
 	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return []string{}, errors.New("read response body failed: " + fmt.Sprint(err))
+		return []string{}, fmt.Errorf("read response body failed with error: %w", err)
 	}
 
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
-		return []string{}, errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+		return []string{}, fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
 
 	interfaceKeys := data["data"].([]interface{})
@@ -218,36 +212,65 @@ func (pc *PkidClient) List(project string) ([]string, error) {
 }
 
 // delete a key with its value inside a project
-func (pc *PkidClient) Delete(project string, key string) error {
+func (pc *PkidClient) DeleteProject(project string) error {
 
-	requestURL := fmt.Sprintf("http://localhost:%v/delete/%v/%v/%v", pc.port, hex.EncodeToString(pc.publicKey), project, key)
+	requestURL := fmt.Sprintf("%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project)
 	request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
 	if err != nil {
-		return errors.New("delete request failed with error: " + fmt.Sprint(err))
+		return fmt.Errorf("delete request failed with error: %w", err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := pc.client.Do(request)
 	if err != nil {
-		return errors.New("delete response failed with error: " + fmt.Sprint(err))
+		return fmt.Errorf("delete response failed with error: %w", err)
 	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return errors.New("read response body failed: " + fmt.Sprint(err))
+		return fmt.Errorf("read response body failed with error: %w", err)
 	}
 
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
-		return errors.New("unmarshal response body failed: " + fmt.Sprint(err))
+		return fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
 
-	msg := data["msg"].(string)
-	fmt.Println(msg)
+	return err
+}
+
+// delete a key with its value inside a project
+func (pc *PkidClient) Delete(project string, key string) error {
+
+	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
+	request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
+	if err != nil {
+		return fmt.Errorf("delete request failed with error: %w", err)
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := pc.client.Do(request)
+	if err != nil {
+		return fmt.Errorf("delete response failed with error: %w", err)
+	}
+
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return fmt.Errorf("read response body failed with error: %w", err)
+	}
+
+	var data map[string]interface{}
+	err = json.Unmarshal(body, &data)
+
+	if err != nil {
+		return fmt.Errorf("unmarshal response body failed with error: %w", err)
+	}
 
 	return err
 }
