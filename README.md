@@ -46,6 +46,16 @@ Delete the value of a document corresponding to {key} inside a {project} indexed
 
 pk is hex encoded;
 
+### Delete project
+
+```api
+DELETE /{pk}/{project}
+```
+
+Delete all values of documents inside a {project} indexed by the public key {pk}. There is no requirement for a security header
+
+pk is hex encoded;
+
 ### List
 
 ```api
@@ -104,6 +114,7 @@ pkidClient := NewPkidClient(privateKey, publicKey, serverUrl, timeout)
 err := pkidClient.Set("pkid", "key", "value", true)
 value, err := pkidClient.Get("pkid", "key")
 keys, err := pkidClient.List("pkid")
+err = pkidClient.DeleteProject("pkid")
 err = pkidClient.Delete("pkid", "key")
 ```
 
