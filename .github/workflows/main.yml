@@ -20,6 +20,8 @@ jobs:
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
+        with:
+          mod: readonly
 
       - name: staticcheck
         uses: dominikh/staticcheck-action@v1.2.0
