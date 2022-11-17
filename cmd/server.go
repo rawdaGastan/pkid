@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/rawdaGastan/pkid/internal"
@@ -33,22 +34,28 @@ var rootCmd = &cobra.Command{
 
 		filePath, err := cmd.Flags().GetString("file")
 		if err != nil {
-			logger.Error().Msg(fmt.Sprint("start pkid server failed with error: ", err))
+			logger.Error().Msg(fmt.Sprint("command failed with error: ", err))
 			return
 		}
 
 		if filePath == "" {
-			logger.Error().Msg("start pkid server failed with error: no file path provided")
+			logger.Error().Msg("command with error: no file path provided")
 			return
 		}
 
 		port, err := cmd.Flags().GetInt("port")
 		if err != nil {
-			logger.Error().Msg(fmt.Sprint("start pkid server failed with error: ", err))
+			logger.Error().Msg(fmt.Sprint("command failed with error: ", err))
 			return
 		}
 
-		err = internal.StartServer(logger, filePath, port)
+		server, err := internal.NewServer(logger, []http.Handler{}, filePath, port)
+		if err != nil {
+			logger.Error().Msg(fmt.Sprint("new pkid server failed with error: ", err))
+			return
+		}
+
+		err = server.Start()
 		if err != nil {
 			logger.Error().Msg(fmt.Sprint("start pkid server failed with error: ", err))
 			return

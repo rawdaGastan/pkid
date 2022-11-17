@@ -160,15 +160,15 @@ func TestServer(t *testing.T) {
 	logger := zerolog.New(os.Stdout).With().Logger()
 	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
 
-	server := newServer(logger)
-	err := server.setConn(testDir + "/pkid.db")
+	router := newRouter(logger)
+	err := router.setConn(testDir + "/pkid.db")
 
 	if err != nil {
 		t.Errorf(fmt.Sprint("error starting server database: ", err))
 	}
 
 	t.Run("test_failed_server", func(t *testing.T) {
-		err := StartServer(logger, "", 3000)
+		_, err := NewServer(logger, []http.Handler{}, "", 3000)
 
 		if err == nil {
 			t.Errorf("expected error got nil")
@@ -215,7 +215,7 @@ func TestServer(t *testing.T) {
 		})
 
 		w := httptest.NewRecorder()
-		server.set(w, req)
+		router.set(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode != 201 {
@@ -262,7 +262,7 @@ func TestServer(t *testing.T) {
 		})
 
 		w := httptest.NewRecorder()
-		server.set(w, req)
+		router.set(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 201 {
@@ -294,7 +294,7 @@ func TestServer(t *testing.T) {
 		})
 
 		w := httptest.NewRecorder()
-		server.set(w, req)
+		router.set(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 201 {
@@ -331,7 +331,7 @@ func TestServer(t *testing.T) {
 		})
 
 		w := httptest.NewRecorder()
-		server.set(w, req)
+		router.set(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 201 {
@@ -368,7 +368,7 @@ func TestServer(t *testing.T) {
 		})
 
 		w := httptest.NewRecorder()
-		server.set(w, req)
+		router.set(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 201 {
@@ -385,7 +385,7 @@ func TestServer(t *testing.T) {
 			"project": "pkid",
 			"key":     "key",
 		})
-		server.get(w, req)
+		router.get(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode != 200 {
@@ -402,7 +402,7 @@ func TestServer(t *testing.T) {
 			"project": "pkid",
 			"key":     "",
 		})
-		server.get(w, req)
+		router.get(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 200 {
@@ -418,7 +418,7 @@ func TestServer(t *testing.T) {
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 		})
-		server.list(w, req)
+		router.list(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode != 200 {
@@ -434,7 +434,7 @@ func TestServer(t *testing.T) {
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "",
 		})
-		server.list(w, req)
+		router.list(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 200 {
@@ -451,7 +451,7 @@ func TestServer(t *testing.T) {
 			"project": "pkid",
 			"key":     "key",
 		})
-		server.delete(w, req)
+		router.delete(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode != 202 {
@@ -468,7 +468,7 @@ func TestServer(t *testing.T) {
 			"project": "pkid",
 			"key":     "",
 		})
-		server.delete(w, req)
+		router.delete(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 202 {
@@ -484,7 +484,7 @@ func TestServer(t *testing.T) {
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 		})
-		server.deleteProject(w, req)
+		router.deleteProject(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode != 202 {
@@ -500,7 +500,7 @@ func TestServer(t *testing.T) {
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "",
 		})
-		server.deleteProject(w, req)
+		router.deleteProject(w, req)
 		res := w.Result()
 		defer res.Body.Close()
 		if res.StatusCode == 202 {

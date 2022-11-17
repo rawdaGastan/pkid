@@ -59,9 +59,9 @@
 				
 				<option value="file1">github.com/rawdaGastan/pkid/internal/pkid_store.go (84.5%)</option>
 				
-				<option value="file2">github.com/rawdaGastan/pkid/internal/routes.go (72.9%)</option>
+				<option value="file2">github.com/rawdaGastan/pkid/internal/routes.go (73.2%)</option>
 				
-				<option value="file3">github.com/rawdaGastan/pkid/internal/server.go (32.1%)</option>
+				<option value="file3">github.com/rawdaGastan/pkid/internal/server.go (8.0%)</option>
 				
 				<option value="file4">github.com/rawdaGastan/pkid/internal/verify.go (87.5%)</option>
 				
@@ -537,15 +537,45 @@ import (
         "bytes"
         "encoding/hex"
         "encoding/json"
+        "errors"
         "fmt"
         "net/http"
         "strings"
 
         "github.com/gorilla/mux"
+        "github.com/rs/zerolog"
 )
 
+type router struct {
+        db     PkidStore
+        logger zerolog.Logger
+}
+
+// create a new instance of the router
+func newRouter(logger zerolog.Logger) router <span class="cov8" title="1">{
+        return router{
+                logger: logger,
+        }
+}</span>
+
+// set the connection and migration of the db
+func (r *router) setConn(filePath string) error <span class="cov8" title="1">{
+        if filePath == "" </span><span class="cov0" title="0">{
+                return errors.New("no file path provided")
+        }</span>
+
+        <span class="cov8" title="1">db := newPkidStore()
+        db.setConn(filePath)
+        if err := db.migrate(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">r.db = db
+        return nil</span>
+}
+
 // get the value of the given key, using the public key
-func (s *server) get(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+func (r *router) get(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
 
         pk := mux.Vars(request)["pk"]
         project := mux.Vars(request)["project"]
@@ -553,10 +583,10 @@ func (s *server) get(w http.ResponseWriter, request *http.Request) <span class="
         projectKey := project + "_" + key
 
         docKey := pk + "_" + projectKey
-        value, err := s.db.get(docKey)
+        value, err := r.db.get(docKey)
         if err != nil </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("can't find key: ", err))
+                r.logger.Error().Msg(fmt.Sprint("can't find key: ", err))
                 return
         }</span>
 
@@ -565,28 +595,28 @@ func (s *server) get(w http.ResponseWriter, request *http.Request) <span class="
         res, err := json.Marshal(map[string]string{"data": value, "msg": "data is got successfully"})
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
         <span class="cov8" title="1">w.Write(res)</span>
 }
 
 // list all keys for a specific project, using the public key
-func (s *server) list(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+func (r *router) list(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
 
         pk := mux.Vars(request)["pk"]
         project := mux.Vars(request)["project"]
 
         if project == "" </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg("db list project failed with error: no project given")
+                r.logger.Error().Msg("db list project failed with error: no project given")
                 return
         }</span>
 
-        <span class="cov8" title="1">AllKeys, err := s.db.list()
+        <span class="cov8" title="1">AllKeys, err := r.db.list()
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("db list failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("db list failed with error: ", err))
                 return
         }</span>
 
@@ -605,36 +635,36 @@ func (s *server) list(w http.ResponseWriter, request *http.Request) <span class=
         res, err := json.Marshal(map[string]any{"data": keys, "msg": "data is got successfully"})
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
         <span class="cov8" title="1">w.Write(res)</span>
 }
 
-func (s *server) deleteProject(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+func (r *router) deleteProject(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
 
         pk := mux.Vars(request)["pk"]
         project := mux.Vars(request)["project"]
 
         if project == "" </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg("db deleting project failed with error: no project given")
+                r.logger.Error().Msg("db deleting project failed with error: no project given")
                 return
         }</span>
 
-        <span class="cov8" title="1">AllKeys, err := s.db.list()
+        <span class="cov8" title="1">AllKeys, err := r.db.list()
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("db list failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("db list failed with error: ", err))
                 return
         }</span>
 
         <span class="cov8" title="1">for _, key := range AllKeys </span><span class="cov0" title="0">{
                 if strings.HasPrefix(key, pk+"_"+project+"_") </span><span class="cov0" title="0">{
-                        err := s.db.delete(key)
+                        err := r.db.delete(key)
                         if err != nil </span><span class="cov0" title="0">{
                                 w.WriteHeader(http.StatusBadRequest)
-                                s.logger.Error().Msg(fmt.Sprintf("db deleting key %v failed with error: %v", key, err))
+                                r.logger.Error().Msg(fmt.Sprintf("db deleting key %v failed with error: %v", key, err))
                                 return
                         }</span>
                 }
@@ -645,14 +675,14 @@ func (s *server) deleteProject(w http.ResponseWriter, request *http.Request) <sp
         res, err := json.Marshal(map[string]string{"msg": "data is deleted successfully"})
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
         <span class="cov8" title="1">w.Write(res)</span>
 }
 
 // delete the value of the given key, using the public key
-func (s *server) delete(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+func (r *router) delete(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
 
         pk := mux.Vars(request)["pk"]
         project := mux.Vars(request)["project"]
@@ -660,10 +690,10 @@ func (s *server) delete(w http.ResponseWriter, request *http.Request) <span clas
         projectKey := project + "_" + key
 
         docKey := pk + "_" + projectKey
-        err := s.db.delete(docKey)
+        err := r.db.delete(docKey)
         if err != nil </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("db deletion failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("db deletion failed with error: ", err))
                 return
         }</span>
 
@@ -672,7 +702,7 @@ func (s *server) delete(w http.ResponseWriter, request *http.Request) <span clas
         res, err := json.Marshal(map[string]string{"msg": "data is deleted successfully"})
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
         <span class="cov8" title="1">w.Write(res)</span>
@@ -680,7 +710,7 @@ func (s *server) delete(w http.ResponseWriter, request *http.Request) <span clas
 }
 
 // set the given value of the given key, using the public key
-func (s *server) set(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
+func (r *router) set(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
 
         pk := mux.Vars(request)["pk"]
         project := mux.Vars(request)["project"]
@@ -695,20 +725,20 @@ func (s *server) set(w http.ResponseWriter, request *http.Request) <span class="
         verifyPk, err := hex.DecodeString(pk)
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("can't decode public key: ", err))
+                r.logger.Error().Msg(fmt.Sprint("can't decode public key: ", err))
                 return
         }</span>
 
         // check request
         <span class="cov8" title="1">if body == "" </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg("no body given")
+                r.logger.Error().Msg("no body given")
                 return
         }</span>
 
         <span class="cov8" title="1">if request.Header.Get("Authorization") == "" </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg("no Authorization header")
+                r.logger.Error().Msg("no Authorization header")
                 return
         }</span>
 
@@ -716,25 +746,25 @@ func (s *server) set(w http.ResponseWriter, request *http.Request) <span class="
         <span class="cov8" title="1">verified, err := verifySignedData(body, verifyPk)
         if !verified || err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("invalid data: ", err))
+                r.logger.Error().Msg(fmt.Sprint("invalid data: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">s.logger.Debug().Msg(fmt.Sprint("signed body is verified: ", verified))
+        <span class="cov8" title="1">r.logger.Debug().Msg(fmt.Sprint("signed body is verified: ", verified))
 
         authHeader, err := verifySignedHeader(request.Header.Get("Authorization"), verifyPk)
         if !authHeader || err != nil </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("invalid authorization header: ", err))
+                r.logger.Error().Msg(fmt.Sprint("invalid authorization header: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">s.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", err))
+        <span class="cov8" title="1">r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", err))
 
         // set date
         docKey := pk + "_" + projectKey
-        err = s.db.set(docKey, body)
+        err = r.db.set(docKey, body)
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("database set failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("database set failed with error: ", err))
                 return
         }</span>
 
@@ -744,7 +774,7 @@ func (s *server) set(w http.ResponseWriter, request *http.Request) <span class="
         res, err := json.Marshal(map[string]string{"msg": "data is set successfully"})
         if err != nil </span><span class="cov0" title="0">{
                 w.WriteHeader(http.StatusBadRequest)
-                s.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
+                r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
         <span class="cov8" title="1">w.Write(res)</span>
@@ -762,59 +792,59 @@ import (
         "github.com/rs/zerolog"
 )
 
+type ServerCfgOptions struct {
+        port int
+}
 type server struct {
-        db     PkidStore
-        logger zerolog.Logger
+        cfg     ServerCfgOptions
+        logger  zerolog.Logger
+        handler http.Handler
 }
 
 // create a new instance of the server
-func newServer(logger zerolog.Logger) server <span class="cov8" title="1">{
-        return server{
-                logger: logger,
-        }
-}</span>
-
-// set the connection and migration of the db
-func (s *server) setConn(filePath string) error <span class="cov8" title="1">{
-        if filePath == "" </span><span class="cov0" title="0">{
-                return errors.New("no file path provided")
-        }</span>
-
-        <span class="cov8" title="1">db := newPkidStore()
-        db.setConn(filePath)
-        if err := db.migrate(); err != nil </span><span class="cov0" title="0">{
-                return err
-        }</span>
-
-        <span class="cov8" title="1">s.db = db
-        return nil</span>
-}
-
-func StartServer(logger zerolog.Logger, filePath string, port int) error <span class="cov8" title="1">{
-
+func NewServer(logger zerolog.Logger, handlers []http.Handler, filePath string, port int) (server, error) <span class="cov8" title="1">{
         if filePath == "" </span><span class="cov8" title="1">{
-                return errors.New("no file path provided")
+                return server{}, errors.New("no file path provided")
         }</span>
 
-        // set the server
-        <span class="cov0" title="0">server := newServer(logger)
-        err := server.setConn(filePath)
+        // set the router DB
+        <span class="cov0" title="0">router := newRouter(logger)
+        err := router.setConn(filePath)
         if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("error starting server database: %w", err)
+                return server{}, fmt.Errorf("error starting server database: %w", err)
         }</span>
+
+        <span class="cov0" title="0">muxHandler := http.NewServeMux()
 
         // set the router
-        <span class="cov0" title="0">router := mux.NewRouter().StrictSlash(true)
+        muxRouter := mux.NewRouter().StrictSlash(true)
 
-        router.HandleFunc("/{pk}/{project}/{key}", server.set).Methods("POST")
-        router.HandleFunc("/{pk}/{project}/{key}", server.get).Methods("GET")
-        router.HandleFunc("/{pk}/{project}", server.list).Methods("GET")
-        router.HandleFunc("/{pk}/{project}", server.deleteProject).Methods("DELETE")
-        router.HandleFunc("/{pk}/{project}/{key}", server.delete).Methods("DELETE")
+        muxRouter.HandleFunc("/{pk}/{project}/{key}", router.set).Methods("POST")
+        muxRouter.HandleFunc("/{pk}/{project}/{key}", router.get).Methods("GET")
+        muxRouter.HandleFunc("/{pk}/{project}", router.list).Methods("GET")
+        muxRouter.HandleFunc("/{pk}/{project}", router.deleteProject).Methods("DELETE")
+        muxRouter.HandleFunc("/{pk}/{project}/{key}", router.delete).Methods("DELETE")
 
-        // start the server
-        logger.Debug().Msg(fmt.Sprint("server is running at ", port))
-        err = http.ListenAndServe(fmt.Sprintf(":%v", port), router)
+        muxHandler.Handle("/", muxRouter)
+        for _, handler := range handlers </span><span class="cov0" title="0">{
+                muxHandler.Handle("/", handler)
+        }</span>
+
+        <span class="cov0" title="0">cfg := ServerCfgOptions{
+                port: port,
+        }
+
+        return server{
+                logger:  logger,
+                handler: muxHandler,
+                cfg:     cfg,
+        }, nil</span>
+}
+
+func (s *server) Start() error <span class="cov0" title="0">{
+
+        s.logger.Debug().Msg(fmt.Sprint("server is running at ", s.cfg.port))
+        err := http.ListenAndServe(fmt.Sprintf(":%v", s.cfg.port), s.handler)
 
         if errors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
                 return errors.New("server closed")
