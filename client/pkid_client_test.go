@@ -26,7 +26,6 @@ func TestFakePkid(t *testing.T) {
 		client := &http.Client{
 			Transport: FakePkid(func(*http.Request) (*http.Response, error) {
 				return &http.Response{
-					StatusCode: http.StatusInternalServerError,
 					Header: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
@@ -58,7 +57,6 @@ func TestFakePkid(t *testing.T) {
 		client := &http.Client{
 			Transport: FakePkid(func(*http.Request) (*http.Response, error) {
 				return &http.Response{
-					StatusCode: http.StatusInternalServerError,
 					Header: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
@@ -84,7 +82,6 @@ func TestFakePkid(t *testing.T) {
 		client := &http.Client{
 			Transport: FakePkid(func(*http.Request) (*http.Response, error) {
 				return &http.Response{
-					StatusCode: http.StatusInternalServerError,
 					Header: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
@@ -109,7 +106,6 @@ func TestFakePkid(t *testing.T) {
 		client := &http.Client{
 			Transport: FakePkid(func(*http.Request) (*http.Response, error) {
 				return &http.Response{
-					StatusCode: http.StatusInternalServerError,
 					Header: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
@@ -130,7 +126,6 @@ func TestFakePkid(t *testing.T) {
 		client := &http.Client{
 			Transport: FakePkid(func(*http.Request) (*http.Response, error) {
 				return &http.Response{
-					StatusCode: http.StatusInternalServerError,
 					Header: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
