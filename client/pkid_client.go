@@ -34,6 +34,16 @@ func NewPkidClient(privateKey []byte, publicKey []byte, url string, timeout time
 
 }
 
+// for testing with given client
+func NewPkidClientWithHTTPClient(privateKey []byte, publicKey []byte, url string, client *http.Client) PkidClient {
+	return PkidClient{
+		client:     *client,
+		serverUrl:  url,
+		privateKey: privateKey,
+		publicKey:  publicKey,
+	}
+}
+
 // generate a private key and public key for the client
 func GenerateKeyPair() ([]byte, []byte) {
 	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
@@ -114,7 +124,7 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 		return fmt.Errorf("unmarshal response body failed: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // get a value for a key inside a project
@@ -240,7 +250,7 @@ func (pc *PkidClient) DeleteProject(project string) error {
 		return fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // delete a key with its value inside a project
@@ -272,5 +282,5 @@ func (pc *PkidClient) Delete(project string, key string) error {
 		return fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
 
-	return err
+	return nil
 }

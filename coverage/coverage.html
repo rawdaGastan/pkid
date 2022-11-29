@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/rawdaGastan/pkid/client/pkid_client.go (78.9%)</option>
+				<option value="file0">github.com/rawdaGastan/pkid/client/pkid_client.go (77.5%)</option>
 				
-				<option value="file1">github.com/rawdaGastan/pkid/internal/routes.go (73.2%)</option>
+				<option value="file1">github.com/rawdaGastan/pkid/internal/routes.go (65.9%)</option>
 				
 				<option value="file2">github.com/rawdaGastan/pkid/internal/server.go (8.0%)</option>
 				
@@ -111,6 +111,16 @@ func NewPkidClient(privateKey []byte, publicKey []byte, url string, timeout time
                 publicKey:  publicKey,
         }
 
+}</span>
+
+// for testing with given client
+func NewPkidClientWithHTTPClient(privateKey []byte, publicKey []byte, url string, client *http.Client) PkidClient <span class="cov8" title="1">{
+        return PkidClient{
+                client:     *client,
+                serverUrl:  url,
+                privateKey: privateKey,
+                publicKey:  publicKey,
+        }
 }</span>
 
 // generate a private key and public key for the client
@@ -193,7 +203,7 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
                 return fmt.Errorf("unmarshal response body failed: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return err</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // get a value for a key inside a project
@@ -242,7 +252,7 @@ func (pc *PkidClient) Get(project string, key string) (string, error) <span clas
         <span class="cov8" title="1">is_encrypted := jsonPayload["is_encrypted"].(bool)
         value := jsonPayload["payload"].(string)
 
-        if is_encrypted </span><span class="cov8" title="1">{
+        if is_encrypted </span><span class="cov0" title="0">{
                 value, err = pkg.Decrypt(value, pc.publicKey, pc.privateKey)
                 if err != nil </span><span class="cov0" title="0">{
                         return "", fmt.Errorf("decrypting value failed with error: %w", err)
@@ -319,7 +329,7 @@ func (pc *PkidClient) DeleteProject(project string) error <span class="cov8" tit
                 return fmt.Errorf("unmarshal response body failed with error: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return err</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // delete a key with its value inside a project
@@ -351,7 +361,7 @@ func (pc *PkidClient) Delete(project string, key string) error <span class="cov8
                 return fmt.Errorf("unmarshal response body failed with error: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return err</span>
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		
@@ -384,8 +394,12 @@ func newRouter(logger zerolog.Logger, db PkidStore) router <span class="cov8" ti
 
 // set the connection and migration of the db
 func (r *router) setConn(filePath string) error <span class="cov8" title="1">{
-        r.db.setConn(filePath)
-        if err := r.db.migrate(); err != nil </span><span class="cov0" title="0">{
+        err := r.db.setConn(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if err := r.db.migrate(); err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
         <span class="cov8" title="1">return nil</span>
@@ -415,7 +429,13 @@ func (r *router) get(w http.ResponseWriter, request *http.Request) <span class="
                 r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">w.Write(res)</span>
+
+        <span class="cov8" title="1">_, err = w.Write(res)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+                return
+        }</span>
 }
 
 // list all keys for a specific project, using the public key
@@ -455,7 +475,12 @@ func (r *router) list(w http.ResponseWriter, request *http.Request) <span class=
                 r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">w.Write(res)</span>
+        <span class="cov8" title="1">_, err = w.Write(res)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+                return
+        }</span>
 }
 
 func (r *router) deleteProject(w http.ResponseWriter, request *http.Request) <span class="cov8" title="1">{
@@ -495,7 +520,12 @@ func (r *router) deleteProject(w http.ResponseWriter, request *http.Request) <sp
                 r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">w.Write(res)</span>
+        <span class="cov8" title="1">_, err = w.Write(res)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+                return
+        }</span>
 }
 
 // delete the value of the given key, using the public key
@@ -522,7 +552,12 @@ func (r *router) delete(w http.ResponseWriter, request *http.Request) <span clas
                 r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">w.Write(res)</span>
+        <span class="cov8" title="1">_, err = w.Write(res)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+                return
+        }</span>
 
 }
 
@@ -535,8 +570,14 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) <span class="
         projectKey := project + "_" + key
 
         buf := new(bytes.Buffer)
-        buf.ReadFrom(request.Body)
-        body := buf.String()
+        _, err := buf.ReadFrom(request.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                r.logger.Error().Msg(fmt.Sprint("can't read from body buffer: ", err))
+                return
+        }</span>
+
+        <span class="cov8" title="1">body := buf.String()
 
         // verify key
         verifyPk, err := hex.DecodeString(pk)
@@ -594,7 +635,12 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) <span class="
                 r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">w.Write(res)</span>
+        <span class="cov8" title="1">_, err = w.Write(res)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusBadRequest)
+                r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+                return
+        }</span>
 }
 </pre>
 		
