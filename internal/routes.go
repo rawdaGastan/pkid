@@ -248,7 +248,7 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) {
 		r.logger.Error().Msg(fmt.Sprint("invalid authorization header: ", err))
 		return
 	}
-	r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", err))
+	r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", authHeader))
 
 	// set date
 	docKey := pk + "_" + projectKey

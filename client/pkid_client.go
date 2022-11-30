@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -48,6 +49,13 @@ func NewPkidClientWithHTTPClient(privateKey []byte, publicKey []byte, url string
 func GenerateKeyPair() ([]byte, []byte) {
 	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
 	return privateKey, publicKey
+}
+
+// get a public key from private key for the client
+func GetPublicKey(privateKey []byte) []byte {
+	private := ed25519.PrivateKey(privateKey)
+	publicKey := private.Public().(ed25519.PublicKey)
+	return publicKey
 }
 
 // generate a private key and public key for the client using TF login seed

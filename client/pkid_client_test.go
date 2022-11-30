@@ -236,6 +236,14 @@ func TestPkidClient(t *testing.T) {
 	privateKey, publicKey := GenerateKeyPair()
 	pkidClient := NewPkidClient(privateKey, publicKey, url, 5*time.Second)
 
+	t.Run("test_pub_from_priv", func(t *testing.T) {
+		testPublicKey := GetPublicKey(privateKey)
+
+		if !reflect.DeepEqual(testPublicKey, publicKey) {
+			t.Errorf("public key is wrong")
+		}
+	})
+
 	t.Run("test_seed_key_pair", func(t *testing.T) {
 		seed := "bm2xl92552zz0Kxtvg4Gbaosnh6FY9H2WsIKao6Emh8="
 		_, _, err := GenerateKeyPairUsingSeed(seed)
