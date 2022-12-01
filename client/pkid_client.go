@@ -70,10 +70,13 @@ func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) {
 }
 
 // Set sets a new value for a key inside a project
-func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error {
+func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) (err error) {
 
 	if willEncrypt {
-		value = pkg.Encrypt(value, pc.publicKey)
+		value, err = pkg.Encrypt(value, pc.publicKey)
+		if err != nil {
+			return err
+		}
 	}
 
 	header := map[string]interface{}{
