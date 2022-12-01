@@ -72,12 +72,7 @@ func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) {
 func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error {
 
 	if willEncrypt {
-		decryptedValue, err := pkg.Encrypt(value, pc.publicKey)
-		if err != nil {
-			return fmt.Errorf("encryption failed with error: %w", err)
-		}
-
-		value = decryptedValue
+		value = pkg.Encrypt(value, pc.publicKey)
 	}
 
 	header := map[string]interface{}{

@@ -55,15 +55,15 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/rawdaGastan/pkid/client/pkid_client.go (77.5%)</option>
+				<option value="file0">github.com/rawdaGastan/pkid/client/pkid_client.go (97.7%)</option>
 				
 				<option value="file1">github.com/rawdaGastan/pkid/internal/routes.go (65.9%)</option>
 				
-				<option value="file2">github.com/rawdaGastan/pkid/internal/server.go (8.0%)</option>
+				<option value="file2">github.com/rawdaGastan/pkid/internal/server.go (68.0%)</option>
 				
 				<option value="file3">github.com/rawdaGastan/pkid/internal/sqlite_store.go (84.1%)</option>
 				
-				<option value="file4">github.com/rawdaGastan/pkid/internal/verify.go (87.5%)</option>
+				<option value="file4">github.com/rawdaGastan/pkid/internal/verify.go (95.8%)</option>
 				
 				</select>
 			</div>
@@ -81,6 +81,7 @@
 
 import (
         "bytes"
+        "crypto/ed25519"
         "encoding/base64"
         "encoding/hex"
         "encoding/json"
@@ -129,10 +130,17 @@ func GenerateKeyPair() ([]byte, []byte) <span class="cov8" title="1">{
         return privateKey, publicKey
 }</span>
 
+// get a public key from private key for the client
+func GetPublicKey(privateKey []byte) []byte <span class="cov8" title="1">{
+        private := ed25519.PrivateKey(privateKey)
+        publicKey := private.Public().(ed25519.PublicKey)
+        return publicKey
+}</span>
+
 // generate a private key and public key for the client using TF login seed
 func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) <span class="cov8" title="1">{
         decodedSeed, err := base64.StdEncoding.DecodeString(seed)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return []byte{}, []byte{}, err
         }</span>
         <span class="cov8" title="1">privateKey, publicKey, _ := sodium.CryptoSignSeedKeyPair(decodedSeed)
@@ -143,13 +151,8 @@ func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) <span class="
 func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error <span class="cov8" title="1">{
 
         if willEncrypt </span><span class="cov8" title="1">{
-                decryptedValue, err := pkg.Encrypt(value, pc.publicKey)
-                if err != nil </span><span class="cov0" title="0">{
-                        return fmt.Errorf("encryption failed with error: %w", err)
-                }</span>
-
-                <span class="cov8" title="1">value = decryptedValue</span>
-        }
+                value = pkg.Encrypt(value, pc.publicKey)
+        }</span>
 
         <span class="cov8" title="1">header := map[string]interface{}{
                 "intent":    "pkid.store",
@@ -178,7 +181,7 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 
         requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
         request, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("set request failed with error: %w", err)
         }</span>
 
@@ -186,20 +189,20 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
         request.Header.Set("Content-Type", "application/json")
 
         response, err := pc.client.Do(request)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("set response failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">defer response.Body.Close()
         body, err := io.ReadAll(response.Body)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("read response body failed: %w", err)
         }</span>
 
         <span class="cov8" title="1">var data map[string]interface{}
         err = json.Unmarshal(body, &amp;data)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("unmarshal response body failed: %w", err)
         }</span>
 
@@ -211,34 +214,34 @@ func (pc *PkidClient) Get(project string, key string) (string, error) <span clas
 
         requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
         request, err := http.NewRequest(http.MethodGet, requestURL, nil)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("get request failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
 
         response, err := pc.client.Do(request)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("get response failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">defer response.Body.Close()
         body, err := io.ReadAll(response.Body)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("read response body failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">var data map[string]string
         err = json.Unmarshal(body, &amp;data)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("unmarshal response body failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">signedPayload := data["data"]
 
         payload, err := pkg.VerifySignedData(signedPayload, pc.publicKey)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("verifying data failed with error: %w", err)
         }</span>
 
@@ -252,9 +255,9 @@ func (pc *PkidClient) Get(project string, key string) (string, error) <span clas
         <span class="cov8" title="1">is_encrypted := jsonPayload["is_encrypted"].(bool)
         value := jsonPayload["payload"].(string)
 
-        if is_encrypted </span><span class="cov0" title="0">{
+        if is_encrypted </span><span class="cov8" title="1">{
                 value, err = pkg.Decrypt(value, pc.publicKey, pc.privateKey)
-                if err != nil </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov8" title="1">{
                         return "", fmt.Errorf("decrypting value failed with error: %w", err)
                 }</span>
         }
@@ -267,27 +270,27 @@ func (pc *PkidClient) List(project string) ([]string, error) <span class="cov8" 
 
         requestURL := fmt.Sprintf("%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project)
         request, err := http.NewRequest(http.MethodGet, requestURL, nil)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return []string{}, fmt.Errorf("get request failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
 
         response, err := pc.client.Do(request)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return []string{}, fmt.Errorf("get response failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">defer response.Body.Close()
         body, err := io.ReadAll(response.Body)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return []string{}, fmt.Errorf("read response body failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">var data map[string]interface{}
         err = json.Unmarshal(body, &amp;data)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return []string{}, fmt.Errorf("unmarshal response body failed with error: %w", err)
         }</span>
 
@@ -305,27 +308,27 @@ func (pc *PkidClient) DeleteProject(project string) error <span class="cov8" tit
 
         requestURL := fmt.Sprintf("%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project)
         request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("delete request failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
 
         response, err := pc.client.Do(request)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("delete response failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">defer response.Body.Close()
         body, err := io.ReadAll(response.Body)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("read response body failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">var data map[string]interface{}
         err = json.Unmarshal(body, &amp;data)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("unmarshal response body failed with error: %w", err)
         }</span>
 
@@ -337,27 +340,27 @@ func (pc *PkidClient) Delete(project string, key string) error <span class="cov8
 
         requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
         request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("delete request failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">request.Header.Set("Content-Type", "application/json")
 
         response, err := pc.client.Do(request)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("delete response failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">defer response.Body.Close()
         body, err := io.ReadAll(response.Body)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("read response body failed with error: %w", err)
         }</span>
 
         <span class="cov8" title="1">var data map[string]interface{}
         err = json.Unmarshal(body, &amp;data)
 
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("unmarshal response body failed with error: %w", err)
         }</span>
 
@@ -615,7 +618,7 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) <span class="
                 r.logger.Error().Msg(fmt.Sprint("invalid authorization header: ", err))
                 return
         }</span>
-        <span class="cov8" title="1">r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", err))
+        <span class="cov8" title="1">r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", authHeader))
 
         // set date
         docKey := pk + "_" + projectKey
@@ -671,13 +674,13 @@ func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidSt
         }</span>
 
         // set the router DB
-        <span class="cov0" title="0">router := newRouter(logger, pkidStore)
+        <span class="cov8" title="1">router := newRouter(logger, pkidStore)
         err := router.setConn(filePath)
         if err != nil </span><span class="cov0" title="0">{
                 return server{}, fmt.Errorf("error starting server database: %w", err)
         }</span>
 
-        <span class="cov0" title="0">muxHandler := http.NewServeMux()
+        <span class="cov8" title="1">muxHandler := http.NewServeMux()
 
         // set the router
         muxRouter := mux.NewRouter().StrictSlash(true)
@@ -688,10 +691,10 @@ func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidSt
         muxRouter.HandleFunc("/{pk}/{project}", router.deleteProject).Methods("DELETE")
         muxRouter.HandleFunc("/{pk}/{project}/{key}", router.delete).Methods("DELETE")
 
-        for _, mw := range mws </span><span class="cov0" title="0">{
+        for _, mw := range mws </span><span class="cov8" title="1">{
                 muxRouter.Use(mw)
         }</span>
-        <span class="cov0" title="0">muxHandler.Handle("/", muxRouter)
+        <span class="cov8" title="1">muxHandler.Handle("/", muxRouter)
 
         cfg := ServerCfgOptions{
                 port: port,
@@ -902,7 +905,7 @@ func verifySignedData(data string, pk []byte) (bool, error) <span class="cov8" t
         copy(verifyPk[:], pk)
 
         decodedData, err := base64.StdEncoding.DecodeString(data)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return false, err
         }</span>
 
@@ -920,7 +923,7 @@ func verifySignedHeader(header string, pk []byte) (bool, error) <span class="cov
         copy(verifyPk[:], pk)
 
         decodedHeader, err := base64.StdEncoding.DecodeString(header)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return false, err
         }</span>
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/GoKillers/libsodium-go/cryptobox"
 	sodium "github.com/gokillers/libsodium-go/cryptosign"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/nacl/sign"
 )
 
@@ -50,17 +51,18 @@ func VerifySignedData(data string, pk []byte) ([]byte, error) {
 	return verifiedContent, nil
 }
 
-func Encrypt(payload string, publicKey []byte) (string, error) {
+func Encrypt(payload string, publicKey []byte) string {
 	message, err := json.Marshal(payload)
 
+	// marshal string will new cause an error
 	if err != nil {
-		return "", fmt.Errorf("marshal payload failed with error, %w", err)
+		log.Error().Err(err)
 	}
 
 	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
 	encryptedMessage, _ := cryptobox.CryptoBoxSeal(message, curvePublicKey)
 
-	return base64.StdEncoding.EncodeToString(encryptedMessage), nil
+	return base64.StdEncoding.EncodeToString(encryptedMessage)
 }
 
 func Decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error) {
