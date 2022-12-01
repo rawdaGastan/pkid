@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	sodium "github.com/GoKillers/libsodium-go/cryptosign"
 	"github.com/gorilla/mux"
+	"github.com/rawdaGastan/pkid/client"
 	"github.com/rawdaGastan/pkid/pkg"
 	"github.com/rs/zerolog"
 )
 
 func TestVerifiers(t *testing.T) {
-	_, publicKey, _ := sodium.CryptoSignKeyPair()
+	_, publicKey := client.GenerateKeyPair()
 
 	t.Run("test_wrong_encoding", func(t *testing.T) {
 		encoded := "XXXXXaGVsbG8="
@@ -44,7 +44,7 @@ func TestServer(t *testing.T) {
 	pkidStore := NewSqliteStore()
 
 	logger := zerolog.New(os.Stdout).With().Logger()
-	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
+	privateKey, publicKey := client.GenerateKeyPair()
 
 	router := newRouter(logger, pkidStore)
 	err := router.setConn(testDir + "/pkid.db")

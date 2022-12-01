@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	sodium "github.com/GoKillers/libsodium-go/cryptosign"
+	//sodium "github.com/GoKillers/libsodium-go/cryptosign"
+	"github.com/jamesruan/sodium"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/sign"
 )
 
 // sign a msg using public key
-func signMsg(message []byte, privateKey []byte) ([]byte, int) {
-	return sodium.CryptoSign(message, privateKey)
+func signMsg(message []byte, privateKey []byte) []byte {
+	return sodium.Bytes(message).Sign(sodium.SignSecretKey{Bytes: privateKey})
+	//return sodium.CryptoSign(message, privateKey)
 }
 
 // SignEncode signs a msg then encode it
@@ -23,7 +25,7 @@ func SignEncode(payload map[string]interface{}, privateKey []byte) (string, erro
 		return "", err
 	}
 
-	signed, _ := signMsg(message, privateKey)
+	signed := signMsg(message, privateKey)
 
 	return base64.StdEncoding.EncodeToString(signed), nil
 }
@@ -59,7 +61,8 @@ func Encrypt(payload string, publicKey []byte) (string, error) {
 		return "", err
 	}
 
-	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
+	curvePublicKey := sodium.SignPublicKey{Bytes: publicKey}.ToBox().Bytes
+	//curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
 	var encryptedMessage []byte
 	encryptedMessage, err = box.SealAnonymous(encryptedMessage, message, (*[32]byte)(curvePublicKey), nil)
 	if err != nil {
@@ -77,8 +80,11 @@ func Decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error)
 		return "", fmt.Errorf("decoding cipher text failed with error: %w", err)
 	}
 
-	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
-	curvePrivateKey, _ := sodium.CryptoSignEd25519SkToCurve25519(privateKey)
+	curvePublicKey := sodium.SignPublicKey{Bytes: publicKey}.ToBox().Bytes
+	curvePrivateKey := sodium.SignSecretKey{Bytes: privateKey}.ToBox().Bytes
+
+	//curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
+	//curvePrivateKey, _ := sodium.CryptoSignEd25519SkToCurve25519(privateKey)
 
 	var decrypted []byte
 	decrypted, ok := box.OpenAnonymous(decrypted, decodedCipher, (*[32]byte)(curvePublicKey), (*[32]byte)(curvePrivateKey))
