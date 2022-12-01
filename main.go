@@ -15,6 +15,10 @@ limitations under the License.
 */
 package main
 
+// #cgo pkg-config: libsodium
+// #include <stdlib.h>
+// #include <sodium.h>
+import "C"
 import "github.com/rawdaGastan/pkid/cmd"
 
 func main() {
