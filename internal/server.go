@@ -9,26 +9,29 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// ServerCfgOptions is a struct for server configurations
 type ServerCfgOptions struct {
 	port int
 }
-type server struct {
+
+// Server is a struct for server requirements
+type Server struct {
 	cfg     ServerCfgOptions
 	logger  zerolog.Logger
 	handler http.Handler
 }
 
-// create a new instance of the server
-func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidStore, filePath string, port int) (server, error) {
+// NewServer creates a new instance of the server
+func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidStore, filePath string, port int) (Server, error) {
 	if filePath == "" {
-		return server{}, errors.New("no file path provided")
+		return Server{}, errors.New("no file path provided")
 	}
 
 	// set the router DB
 	router := newRouter(logger, pkidStore)
 	err := router.setConn(filePath)
 	if err != nil {
-		return server{}, fmt.Errorf("error starting server database: %w", err)
+		return Server{}, fmt.Errorf("error starting server database: %w", err)
 	}
 
 	muxHandler := http.NewServeMux()
@@ -51,14 +54,15 @@ func NewServer(logger zerolog.Logger, mws []mux.MiddlewareFunc, pkidStore PkidSt
 		port: port,
 	}
 
-	return server{
+	return Server{
 		logger:  logger,
 		handler: muxHandler,
 		cfg:     cfg,
 	}, nil
 }
 
-func (s *server) Start() error {
+// Start starts the server for the given server port
+func (s *Server) Start() error {
 
 	s.logger.Debug().Msg(fmt.Sprint("server is running at ", s.cfg.port))
 	err := http.ListenAndServe(fmt.Sprintf(":%v", s.cfg.port), s.handler)

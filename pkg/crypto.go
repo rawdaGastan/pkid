@@ -16,7 +16,7 @@ func signMsg(message []byte, privateKey []byte) ([]byte, int) {
 	return sodium.CryptoSign(message, privateKey)
 }
 
-// sign a msg then encode it
+// SignEncode signs a msg then encode it
 func SignEncode(payload map[string]interface{}, privateKey []byte) (string, error) {
 	message, err := json.Marshal(payload)
 
@@ -29,7 +29,7 @@ func SignEncode(payload map[string]interface{}, privateKey []byte) (string, erro
 	return base64.StdEncoding.EncodeToString(signed), nil
 }
 
-// verify the signed data (value) of the set request body
+// VerifySignedData verifies the signed data (value) of the set request body
 func VerifySignedData(data string, pk []byte) ([]byte, error) {
 
 	// pk in bytes
@@ -51,6 +51,7 @@ func VerifySignedData(data string, pk []byte) ([]byte, error) {
 	return verifiedContent, nil
 }
 
+// Encrypt encrypts a payload with the public key
 func Encrypt(payload string, publicKey []byte) string {
 	message, err := json.Marshal(payload)
 
@@ -65,6 +66,7 @@ func Encrypt(payload string, publicKey []byte) string {
 	return base64.StdEncoding.EncodeToString(encryptedMessage)
 }
 
+// Decrypt decrypts a cipher with the public key and private key
 func Decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error) {
 	decodedCipher, err := base64.StdEncoding.DecodeString(cipher)
 	if err != nil {
