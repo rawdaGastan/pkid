@@ -102,7 +102,7 @@ func (r *router) list(w http.ResponseWriter, request *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/json")
-	res, err := json.Marshal(map[string]any{"data": keys, "msg": "data is got successfully"})
+	res, err := json.Marshal(map[string]interface{}{"data": keys, "msg": "data is got successfully"})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))

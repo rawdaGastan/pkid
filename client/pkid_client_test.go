@@ -309,7 +309,7 @@ func TestPkidClientFuncsExceptions(t *testing.T) {
 	t.Run("test_wrong_data_list_func", func(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"msg": "data is got successfully", "data": make(chan int)})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"msg": "data is got successfully", "data": make(chan int)})
 		}))
 
 		c := NewPkidClient(privateKey, publicKey, s.URL, 5*time.Second)
@@ -451,7 +451,7 @@ func TestPkidClientFuncs(t *testing.T) {
 
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"msg": "data is got successfully", "data": want})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"msg": "data is got successfully", "data": want})
 		}))
 
 		c := NewPkidClient(privateKey, publicKey, s.URL, 5*time.Second)
@@ -467,7 +467,7 @@ func TestPkidClientFuncs(t *testing.T) {
 	t.Run("test_delete_func", func(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"msg": "data is deleted successfully"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"msg": "data is deleted successfully"})
 		}))
 
 		c := NewPkidClient(privateKey, publicKey, s.URL, 5*time.Second)
@@ -480,7 +480,7 @@ func TestPkidClientFuncs(t *testing.T) {
 	t.Run("test_delete_project_func", func(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"msg": "data is deleted successfully"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"msg": "data is deleted successfully"})
 		}))
 
 		c := NewPkidClient(privateKey, publicKey, s.URL, 5*time.Second)
