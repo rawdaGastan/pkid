@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	sodium "github.com/gokillers/libsodium-go/cryptosign"
+	sodium "github.com/GoKillers/libsodium-go/cryptosign"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/sign"
 )

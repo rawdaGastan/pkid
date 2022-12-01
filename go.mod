@@ -5,7 +5,7 @@ go 1.19
 require github.com/mattn/go-sqlite3 v1.14.16
 
 require (
-	github.com/gokillers/libsodium-go v0.0.0-20171022220152-dd733721c3cb
+	github.com/GoKillers/libsodium-go v0.0.0-20171022220152-dd733721c3cb
 	github.com/gorilla/mux v1.8.0
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.6.1
@@ -13,7 +13,6 @@ require (
 )
 
 require (
-	github.com/GoKillers/libsodium-go v0.0.0-20171022220152-dd733721c3cb // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect

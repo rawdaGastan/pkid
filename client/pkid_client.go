@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	sodium "github.com/gokillers/libsodium-go/cryptosign"
+	sodium "github.com/GoKillers/libsodium-go/cryptosign"
 	"github.com/rawdaGastan/pkid/pkg"
 )
 

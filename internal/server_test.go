@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	sodium "github.com/gokillers/libsodium-go/cryptosign"
+	sodium "github.com/GoKillers/libsodium-go/cryptosign"
 	"github.com/gorilla/mux"
 	"github.com/rawdaGastan/pkid/pkg"
 	"github.com/rs/zerolog"
