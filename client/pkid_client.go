@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	sodium "github.com/GoKillers/libsodium-go/cryptosign"
 	"github.com/rawdaGastan/pkid/pkg"
 )
 
@@ -47,9 +46,12 @@ func NewPkidClientWithHTTPClient(privateKey []byte, publicKey []byte, url string
 }
 
 // GenerateKeyPair generates a private key and public key for the client
-func GenerateKeyPair() ([]byte, []byte) {
-	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
-	return privateKey, publicKey
+func GenerateKeyPair() (privateKey []byte, publicKey []byte, err error) {
+	publicKey, privateKey, err = ed25519.GenerateKey(nil)
+	if err != nil {
+		return
+	}
+	return
 }
 
 // GetPublicKey gets a public key from private key for the client
@@ -60,13 +62,14 @@ func GetPublicKey(privateKey []byte) []byte {
 }
 
 // GenerateKeyPairUsingSeed generates a private key and public key for the client using TF login seed
-func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) {
+func GenerateKeyPairUsingSeed(seed string) (privateKey []byte, publicKey []byte, err error) {
 	decodedSeed, err := base64.StdEncoding.DecodeString(seed)
 	if err != nil {
-		return []byte{}, []byte{}, err
+		return
 	}
-	privateKey, publicKey, _ := sodium.CryptoSignSeedKeyPair(decodedSeed)
-	return privateKey, publicKey, nil
+	privateKey = ed25519.NewKeyFromSeed(decodedSeed)
+	publicKey = GetPublicKey(privateKey)
+	return
 }
 
 // Set sets a new value for a key inside a project

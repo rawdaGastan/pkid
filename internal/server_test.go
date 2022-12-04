@@ -18,7 +18,11 @@ import (
 )
 
 func TestVerifiers(t *testing.T) {
-	_, publicKey := client.GenerateKeyPair()
+	_, publicKey, err := client.GenerateKeyPair()
+
+	if err != nil {
+		t.Errorf("error generating keys: %q", err)
+	}
 
 	t.Run("test_wrong_encoding", func(t *testing.T) {
 		encoded := "XXXXXaGVsbG8="
@@ -44,13 +48,17 @@ func TestServer(t *testing.T) {
 	pkidStore := NewSqliteStore()
 
 	logger := zerolog.New(os.Stdout).With().Logger()
-	privateKey, publicKey := client.GenerateKeyPair()
-
-	router := newRouter(logger, pkidStore)
-	err := router.setConn(testDir + "/pkid.db")
+	privateKey, publicKey, err := client.GenerateKeyPair()
 
 	if err != nil {
-		t.Errorf(fmt.Sprint("error starting server database: ", err))
+		t.Errorf("error generating keys: %q", err)
+	}
+
+	router := newRouter(logger, pkidStore)
+	err = router.setConn(testDir + "/pkid.db")
+
+	if err != nil {
+		t.Errorf("error starting server database: %q", err)
 	}
 
 	t.Run("test_failed_server", func(t *testing.T) {
@@ -72,8 +80,6 @@ func TestServer(t *testing.T) {
 		}
 		mws = append(mws, loggingMw)
 		_, err := NewServer(logger, mws, pkidStore, "pkid.db", 3000)
-
-		fmt.Printf("err: %v\n", err)
 
 		if err != nil {
 			t.Errorf("server should be created")

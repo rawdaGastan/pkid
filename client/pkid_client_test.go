@@ -20,7 +20,10 @@ func (f FakePkid) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func TestFakePkid(t *testing.T) {
-	privateKey, publicKey := GenerateKeyPair()
+	privateKey, publicKey, err := GenerateKeyPair()
+	if err != nil {
+		t.Errorf("error generating keys: %q", err)
+	}
 
 	t.Run("test_set_func", func(t *testing.T) {
 		client := &http.Client{
@@ -144,7 +147,10 @@ func TestFakePkid(t *testing.T) {
 }
 
 func TestPkidClientFuncsExceptions(t *testing.T) {
-	privateKey, publicKey := GenerateKeyPair()
+	privateKey, publicKey, err := GenerateKeyPair()
+	if err != nil {
+		t.Errorf("error generating keys: %q", err)
+	}
 
 	t.Run("test_wrong_response_set_func", func(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -404,7 +410,10 @@ func TestPkidClientFuncsExceptions(t *testing.T) {
 }
 
 func TestPkidClientFuncs(t *testing.T) {
-	privateKey, publicKey := GenerateKeyPair()
+	privateKey, publicKey, err := GenerateKeyPair()
+	if err != nil {
+		t.Errorf("error generating keys: %q", err)
+	}
 
 	t.Run("test_set_func", func(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -492,7 +501,10 @@ func TestPkidClientFuncs(t *testing.T) {
 }
 
 func TestPkidKeys(t *testing.T) {
-	privateKey, publicKey := GenerateKeyPair()
+	privateKey, publicKey, err := GenerateKeyPair()
+	if err != nil {
+		t.Errorf("error generating keys: %q", err)
+	}
 
 	t.Run("test_pub_from_priv", func(t *testing.T) {
 		testPublicKey := GetPublicKey(privateKey)
@@ -525,7 +537,10 @@ func TestPkidClient(t *testing.T) {
 	// check server running
 	_, err := http.Get(url)
 	if err == nil {
-		privateKey, publicKey := GenerateKeyPair()
+		privateKey, publicKey, err := GenerateKeyPair()
+		if err != nil {
+			t.Errorf("error generating keys: %q", err)
+		}
 		pkidClient := NewPkidClient(privateKey, publicKey, url, 5*time.Second)
 
 		t.Run("test_set", func(t *testing.T) {

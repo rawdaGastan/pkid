@@ -1,19 +1,19 @@
 package pkg
 
 import (
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
-	sodium "github.com/GoKillers/libsodium-go/cryptosign"
+	"github.com/jorrizza/ed2curve25519"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/sign"
 )
 
 // sign a msg using public key
-func signMsg(message []byte, privateKey []byte) ([]byte, int) {
-
-	return sodium.CryptoSign(message, privateKey)
+func signMsg(message []byte, privateKey []byte) []byte {
+	return append(ed25519.Sign(privateKey, message), message...)
 }
 
 // SignEncode signs a msg then encode it
@@ -24,7 +24,7 @@ func SignEncode(payload map[string]interface{}, privateKey []byte) (string, erro
 		return "", err
 	}
 
-	signed, _ := signMsg(message, privateKey)
+	signed := signMsg(message, privateKey)
 
 	return base64.StdEncoding.EncodeToString(signed), nil
 }
@@ -60,9 +60,10 @@ func Encrypt(payload string, publicKey []byte) (string, error) {
 		return "", err
 	}
 
-	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
+	curvePublicKey := ed2curve25519.Ed25519PublicKeyToCurve25519(publicKey)
 	var encryptedMessage []byte
 	encryptedMessage, err = box.SealAnonymous(encryptedMessage, message, (*[32]byte)(curvePublicKey), nil)
+
 	if err != nil {
 		return "", err
 	}
@@ -78,11 +79,12 @@ func Decrypt(cipher string, publicKey []byte, privateKey []byte) (string, error)
 		return "", fmt.Errorf("decoding cipher text failed with error: %w", err)
 	}
 
-	curvePublicKey, _ := sodium.CryptoSignEd25519PkToCurve25519(publicKey)
-	curvePrivateKey, _ := sodium.CryptoSignEd25519SkToCurve25519(privateKey)
+	curvePublicKey := ed2curve25519.Ed25519PublicKeyToCurve25519(publicKey)
+	curvePrivateKey := ed2curve25519.Ed25519PrivateKeyToCurve25519(privateKey)
 
 	var decrypted []byte
 	decrypted, ok := box.OpenAnonymous(decrypted, decodedCipher, (*[32]byte)(curvePublicKey), (*[32]byte)(curvePrivateKey))
+
 	if !ok {
 		return "", fmt.Errorf("decrypting failed")
 	}
