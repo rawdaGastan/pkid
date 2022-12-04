@@ -1,3 +1,5 @@
+package cmd
+
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 
@@ -13,7 +15,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
 
 import (
 	"fmt"
@@ -55,7 +56,6 @@ var rootCmd = &cobra.Command{
 		mws := []mux.MiddlewareFunc{}
 		loggingMw := func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Do stuff here
 				log.Println(r.RequestURI)
 				// Call the next handler, which can be another middleware in the chain, or the final handler.
 				next.ServeHTTP(w, r)

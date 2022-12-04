@@ -27,7 +27,11 @@ func newRouter(logger zerolog.Logger, db PkidStore) router {
 
 // set the connection and migration of the db
 func (r *router) setConn(filePath string) error {
-	r.db.setConn(filePath)
+	err := r.db.setConn(filePath)
+	if err != nil {
+		return err
+	}
+
 	if err := r.db.migrate(); err != nil {
 		return err
 	}
@@ -58,7 +62,13 @@ func (r *router) get(w http.ResponseWriter, request *http.Request) {
 		r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
-	w.Write(res)
+
+	_, err = w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+		return
+	}
 }
 
 // list all keys for a specific project, using the public key
@@ -92,13 +102,18 @@ func (r *router) list(w http.ResponseWriter, request *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/json")
-	res, err := json.Marshal(map[string]any{"data": keys, "msg": "data is got successfully"})
+	res, err := json.Marshal(map[string]interface{}{"data": keys, "msg": "data is got successfully"})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
-	w.Write(res)
+	_, err = w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+		return
+	}
 }
 
 func (r *router) deleteProject(w http.ResponseWriter, request *http.Request) {
@@ -138,7 +153,12 @@ func (r *router) deleteProject(w http.ResponseWriter, request *http.Request) {
 		r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
-	w.Write(res)
+	_, err = w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+		return
+	}
 }
 
 // delete the value of the given key, using the public key
@@ -165,7 +185,12 @@ func (r *router) delete(w http.ResponseWriter, request *http.Request) {
 		r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
-	w.Write(res)
+	_, err = w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+		return
+	}
 
 }
 
@@ -178,7 +203,13 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) {
 	projectKey := project + "_" + key
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(request.Body)
+	_, err := buf.ReadFrom(request.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		r.logger.Error().Msg(fmt.Sprint("can't read from body buffer: ", err))
+		return
+	}
+
 	body := buf.String()
 
 	// verify key
@@ -217,7 +248,7 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) {
 		r.logger.Error().Msg(fmt.Sprint("invalid authorization header: ", err))
 		return
 	}
-	r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", err))
+	r.logger.Debug().Msg(fmt.Sprint("signed header is verified: ", authHeader))
 
 	// set date
 	docKey := pk + "_" + projectKey
@@ -237,5 +268,10 @@ func (r *router) set(w http.ResponseWriter, request *http.Request) {
 		r.logger.Error().Msg(fmt.Sprint("response failed with error: ", err))
 		return
 	}
-	w.Write(res)
+	_, err = w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		r.logger.Error().Msg(fmt.Sprint("write response failed: ", err))
+		return
+	}
 }

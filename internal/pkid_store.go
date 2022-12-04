@@ -1,5 +1,6 @@
 package internal
 
+// PkidStore an interface for pkid db store
 type PkidStore interface {
 	setConn(string) error
 	migrate() error

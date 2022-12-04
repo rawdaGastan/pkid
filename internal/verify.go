@@ -43,7 +43,7 @@ func verifySignedHeader(header string, pk []byte) (bool, error) {
 
 	verifiedSignedHeader, verified := sign.Open(decodedHeaderOut, decodedHeader, &verifyPk)
 
-	jsonHeader := map[string]any{}
+	jsonHeader := map[string]interface{}{}
 	err = json.Unmarshal(verifiedSignedHeader, &jsonHeader)
 	if err != nil {
 		return false, err

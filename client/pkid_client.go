@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -10,56 +11,75 @@ import (
 	"net/http"
 	"time"
 
-	sodium "github.com/gokillers/libsodium-go/cryptosign"
 	"github.com/rawdaGastan/pkid/pkg"
 )
 
+// PkidClient a struct for client requirements
 type PkidClient struct {
 	client     http.Client
-	serverUrl  string
+	serverURL  string
 	privateKey []byte
 	publicKey  []byte
 }
 
-// create a new instance from the pkid client
+// NewPkidClient creates a new instance from the pkid client
 func NewPkidClient(privateKey []byte, publicKey []byte, url string, timeout time.Duration) PkidClient {
 	client := http.Client{Timeout: timeout}
 
 	return PkidClient{
 		client:     client,
-		serverUrl:  url,
+		serverURL:  url,
 		privateKey: privateKey,
 		publicKey:  publicKey,
 	}
 
 }
 
-// generate a private key and public key for the client
-func GenerateKeyPair() ([]byte, []byte) {
-	privateKey, publicKey, _ := sodium.CryptoSignKeyPair()
-	return privateKey, publicKey
+// NewPkidClientWithHTTPClient for testing with given client
+func NewPkidClientWithHTTPClient(privateKey []byte, publicKey []byte, url string, client *http.Client) PkidClient {
+	return PkidClient{
+		client:     *client,
+		serverURL:  url,
+		privateKey: privateKey,
+		publicKey:  publicKey,
+	}
 }
 
-// generate a private key and public key for the client using TF login seed
-func GenerateKeyPairUsingSeed(seed string) ([]byte, []byte, error) {
+// GenerateKeyPair generates a private key and public key for the client
+func GenerateKeyPair() (privateKey []byte, publicKey []byte, err error) {
+	publicKey, privateKey, err = ed25519.GenerateKey(nil)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// GetPublicKey gets a public key from private key for the client
+func GetPublicKey(privateKey []byte) []byte {
+	private := ed25519.PrivateKey(privateKey)
+	publicKey := private.Public().(ed25519.PublicKey)
+	return publicKey
+}
+
+// GenerateKeyPairUsingSeed generates a private key and public key for the client using TF login seed
+func GenerateKeyPairUsingSeed(seed string) (privateKey []byte, publicKey []byte, err error) {
 	decodedSeed, err := base64.StdEncoding.DecodeString(seed)
 	if err != nil {
-		return []byte{}, []byte{}, err
+		return
 	}
-	privateKey, publicKey, _ := sodium.CryptoSignSeedKeyPair(decodedSeed)
-	return privateKey, publicKey, nil
+	privateKey = ed25519.NewKeyFromSeed(decodedSeed)
+	publicKey = GetPublicKey(privateKey)
+	return
 }
 
-// set a new value for a key inside a project
-func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) error {
+// Set sets a new value for a key inside a project
+func (pc *PkidClient) Set(project string, key string, value string, willEncrypt bool) (err error) {
 
 	if willEncrypt {
-		decryptedValue, err := pkg.Encrypt(value, pc.publicKey)
+		value, err = pkg.Encrypt(value, pc.publicKey)
 		if err != nil {
-			return fmt.Errorf("encryption failed with error: %w", err)
+			return err
 		}
-
-		value = decryptedValue
 	}
 
 	header := map[string]interface{}{
@@ -87,7 +107,7 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 	jsonBody := []byte(signedBody)
 	bodyReader := bytes.NewReader(jsonBody)
 
-	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
+	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverURL, hex.EncodeToString(pc.publicKey), project, key)
 	request, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
 	if err != nil {
 		return fmt.Errorf("set request failed with error: %w", err)
@@ -114,13 +134,13 @@ func (pc *PkidClient) Set(project string, key string, value string, willEncrypt 
 		return fmt.Errorf("unmarshal response body failed: %w", err)
 	}
 
-	return err
+	return nil
 }
 
-// get a value for a key inside a project
+// Get gets a value for a key inside a project
 func (pc *PkidClient) Get(project string, key string) (string, error) {
 
-	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
+	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverURL, hex.EncodeToString(pc.publicKey), project, key)
 	request, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("get request failed with error: %w", err)
@@ -160,10 +180,10 @@ func (pc *PkidClient) Get(project string, key string) (string, error) {
 		return "", fmt.Errorf("unmarshal payload failed with error: %w", err)
 	}
 
-	is_encrypted := jsonPayload["is_encrypted"].(bool)
+	isEncrypted := jsonPayload["is_encrypted"].(bool)
 	value := jsonPayload["payload"].(string)
 
-	if is_encrypted {
+	if isEncrypted {
 		value, err = pkg.Decrypt(value, pc.publicKey, pc.privateKey)
 		if err != nil {
 			return "", fmt.Errorf("decrypting value failed with error: %w", err)
@@ -173,10 +193,10 @@ func (pc *PkidClient) Get(project string, key string) (string, error) {
 	return value, nil
 }
 
-// list all keys for a project
+// List lists all keys for a project
 func (pc *PkidClient) List(project string) ([]string, error) {
 
-	requestURL := fmt.Sprintf("%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project)
+	requestURL := fmt.Sprintf("%v/%v/%v", pc.serverURL, hex.EncodeToString(pc.publicKey), project)
 	request, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		return []string{}, fmt.Errorf("get request failed with error: %w", err)
@@ -211,10 +231,10 @@ func (pc *PkidClient) List(project string) ([]string, error) {
 	return keys, nil
 }
 
-// delete a key with its value inside a project
+// DeleteProject deletes a key with its value inside a project
 func (pc *PkidClient) DeleteProject(project string) error {
 
-	requestURL := fmt.Sprintf("%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project)
+	requestURL := fmt.Sprintf("%v/%v/%v", pc.serverURL, hex.EncodeToString(pc.publicKey), project)
 	request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
 	if err != nil {
 		return fmt.Errorf("delete request failed with error: %w", err)
@@ -240,13 +260,13 @@ func (pc *PkidClient) DeleteProject(project string) error {
 		return fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
 
-	return err
+	return nil
 }
 
-// delete a key with its value inside a project
+// Delete deletes a key with its value inside a project
 func (pc *PkidClient) Delete(project string, key string) error {
 
-	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverUrl, hex.EncodeToString(pc.publicKey), project, key)
+	requestURL := fmt.Sprintf("%v/%v/%v/%v", pc.serverURL, hex.EncodeToString(pc.publicKey), project, key)
 	request, err := http.NewRequest(http.MethodDelete, requestURL, nil)
 	if err != nil {
 		return fmt.Errorf("delete request failed with error: %w", err)
@@ -272,5 +292,5 @@ func (pc *PkidClient) Delete(project string, key string) error {
 		return fmt.Errorf("unmarshal response body failed with error: %w", err)
 	}
 
-	return err
+	return nil
 }
