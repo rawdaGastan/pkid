@@ -1,10 +1,10 @@
-name: Go GitHub Actions 
+name: Go GitHub Actions
 
-on: 
+on:
   push:
-      branches: [ "main", "development" ]
+    branches: ["main", "development"]
   pull_request:
-    branches: [ "main", "development" ]
+    branches: ["main", "development"]
 
 jobs:
   Explore-Package:
@@ -15,11 +15,13 @@ jobs:
 
       - name: Install GO
         uses: actions/setup-go@v3
-        with: 
+        with:
           go-version: 1.19
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
+        with:
+          args: --timeout 3m --verbose
 
       - name: staticcheck
         uses: dominikh/staticcheck-action@v1.2.0
@@ -27,9 +29,7 @@ jobs:
       - name: gofmt
         uses: Jerome1337/gofmt-action@v1.0.4
         with:
-          gofmt-flags: '-l -d'
-       
+          gofmt-flags: "-l -d"
+
       - name: Test
         run: go test -v ./...
-  
-
