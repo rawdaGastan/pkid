@@ -73,10 +73,8 @@ response data is base64 encoded;
 
 First create `config.json` check [configuration](#configuration)
 
-To build backend and frontend images
-
 ```bash
-docker-compose build
+make build
 ```
 
 ## Run
