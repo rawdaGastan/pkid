@@ -69,18 +69,36 @@ Get the keys of a {project} indexed by the public key {pk}. There is no requirem
 pk is hex encoded;
 response data is base64 encoded;
 
-## How to run locally
+## Build
 
-- Run the server on port 3000 with DB file path "pkid.db"
+First create `config.json` check [configuration](#configuration)
+
+To build backend and frontend images
 
 ```bash
-task start
+docker-compose build
 ```
 
-Or manually:
+## Run
+
+First create `config.json` check [configuration](#configuration)
 
 ```bash
-go run main.go -f pkid.db -p 3000
+make run
+```
+
+### Configuration
+
+Before building or running create `config.json`.
+
+example `config.json`:
+
+```json
+{
+		"port": ":3000",
+		"version": "v1",
+		"db_file": "pkid.db"
+}
 ```
 
 ## Test
@@ -88,15 +106,7 @@ go run main.go -f pkid.db -p 3000
 - Run the app
 
 ```bash
-task test
-```
-
-## Coverage
-
-- Run the app
-
-```bash
-task coverage
+make test
 ```
 
 ## GO PKID client
@@ -133,4 +143,6 @@ privateKey, publicKey, err := GenerateKeyPairUsingSeed(seed)
 serverUrl := "http://localhost:3000"
 timeout := 5 * time.Second
 pkidClient := NewPkidClient(privateKey, publicKey, serverUrl, timeout)
+...
+...
 ```
