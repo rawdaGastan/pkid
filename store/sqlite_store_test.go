@@ -1,4 +1,5 @@
-package internal
+// package store is for pkid storage
+package store
 
 import "testing"
 
@@ -7,7 +8,7 @@ func TestPkidStore(t *testing.T) {
 	pkidStore := NewSqliteStore()
 
 	t.Run("test_empty_file", func(t *testing.T) {
-		err := pkidStore.setConn("")
+		err := pkidStore.SetConn("")
 
 		if err == nil {
 			t.Errorf("connection should not be set")
@@ -15,7 +16,7 @@ func TestPkidStore(t *testing.T) {
 	})
 
 	t.Run("test_connection", func(t *testing.T) {
-		err := pkidStore.setConn(testDir + "/pkid.db")
+		err := pkidStore.SetConn(testDir + "/pkid.db")
 
 		if err != nil {
 			t.Errorf("connection should be set")
@@ -23,28 +24,28 @@ func TestPkidStore(t *testing.T) {
 	})
 
 	t.Run("test_migrate", func(t *testing.T) {
-		err := pkidStore.migrate()
+		err := pkidStore.Migrate()
 		if err != nil {
 			t.Errorf("migration should succeed")
 		}
 	})
 
 	t.Run("test_set", func(t *testing.T) {
-		err := pkidStore.set("key", "value")
+		err := pkidStore.Set("key", "value")
 		if err != nil {
 			t.Errorf("set should succeed")
 		}
 	})
 
 	t.Run("test_set_update", func(t *testing.T) {
-		err := pkidStore.set("key", "valueUpdated")
+		err := pkidStore.Set("key", "valueUpdated")
 		if err != nil {
 			t.Errorf("set should succeed")
 		}
 	})
 
 	t.Run("test_get", func(t *testing.T) {
-		value, err := pkidStore.get("key")
+		value, err := pkidStore.Get("key")
 		if err != nil {
 			t.Errorf("get should not fail: %v", err)
 		}
@@ -55,7 +56,7 @@ func TestPkidStore(t *testing.T) {
 	})
 
 	t.Run("test_list", func(t *testing.T) {
-		keys, err := pkidStore.list()
+		keys, err := pkidStore.List()
 		if err != nil {
 			t.Errorf("list should not fail: %v", err)
 		}
@@ -66,28 +67,28 @@ func TestPkidStore(t *testing.T) {
 	})
 
 	t.Run("test_delete", func(t *testing.T) {
-		err := pkidStore.delete("key")
+		err := pkidStore.Delete("key")
 		if err != nil {
 			t.Errorf("delete should not fail: %v", err)
 		}
 	})
 
 	t.Run("test_get_deleted", func(t *testing.T) {
-		_, err := pkidStore.get("key")
+		_, err := pkidStore.Get("key")
 		if err == nil {
 			t.Errorf("get should fail")
 		}
 	})
 
 	t.Run("test_delete_deleted", func(t *testing.T) {
-		err := pkidStore.delete("key")
+		err := pkidStore.Delete("key")
 		if err == nil {
 			t.Errorf("delete should fail")
 		}
 	})
 
 	t.Run("test_list_empty", func(t *testing.T) {
-		keys, err := pkidStore.list()
+		keys, err := pkidStore.List()
 		if err != nil {
 			t.Errorf("list should not fail: %v", err)
 		}
@@ -98,42 +99,42 @@ func TestPkidStore(t *testing.T) {
 	})
 
 	t.Run("test_set_empty", func(t *testing.T) {
-		err := pkidStore.set("", "value")
+		err := pkidStore.Set("", "value")
 		if err == nil {
 			t.Errorf("set should fail")
 		}
 	})
 
 	t.Run("test_set_update_empty", func(t *testing.T) {
-		err := pkidStore.set("", "valueUpdated")
+		err := pkidStore.Set("", "valueUpdated")
 		if err == nil {
 			t.Errorf("set should fail")
 		}
 	})
 
 	t.Run("test_get_empty", func(t *testing.T) {
-		_, err := pkidStore.get("")
+		_, err := pkidStore.Get("")
 		if err == nil {
 			t.Errorf("get should fail")
 		}
 	})
 
 	t.Run("test_delete_empty", func(t *testing.T) {
-		err := pkidStore.delete("")
+		err := pkidStore.Delete("")
 		if err == nil {
 			t.Errorf("delete should fail")
 		}
 	})
 
 	t.Run("test_update_empty", func(t *testing.T) {
-		err := pkidStore.update("", "value")
+		err := pkidStore.Update("", "value")
 		if err == nil {
 			t.Errorf("update should fail")
 		}
 	})
 
 	t.Run("test_update_empty", func(t *testing.T) {
-		err := pkidStore.update("key", "value")
+		err := pkidStore.Update("key", "value")
 		if err == nil {
 			t.Errorf("update should fail")
 		}

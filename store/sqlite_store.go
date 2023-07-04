@@ -1,4 +1,5 @@
-package internal
+// package store is for pkid storage
+package store
 
 import (
 	"database/sql"
@@ -13,7 +14,7 @@ var (
 	// ErrSetFailed is an error when setting data fails
 	ErrSetFailed = errors.New("set failed")
 	// ErrDeleteFailed is an error when deleting data fails
-	ErrDeleteFailed = errors.New("delete failed")
+	ErrDeleteFailed = errors.New("deletion failed")
 )
 
 // SqliteStore is a struct for sqlite store requirements
@@ -26,8 +27,8 @@ func NewSqliteStore() *SqliteStore {
 	return &SqliteStore{}
 }
 
-// set the connection and filePath of the sqlite db
-func (sqlite *SqliteStore) setConn(filePath string) error {
+// SetConn sets the connection and filePath of the sqlite db
+func (sqlite *SqliteStore) SetConn(filePath string) error {
 	if filePath == "" {
 		return errors.New("no file path provided")
 	}
@@ -40,8 +41,8 @@ func (sqlite *SqliteStore) setConn(filePath string) error {
 	return nil
 }
 
-// create a new table pkid includes 2 columns for key and value, key is unique
-func (sqlite *SqliteStore) migrate() error {
+// Migrate creates a new table includes 2 columns for key and value, key is unique
+func (sqlite *SqliteStore) Migrate() error {
 	query := `
     CREATE TABLE IF NOT EXISTS pkid(
         key TEXT NOT NULL UNIQUE,
@@ -52,8 +53,8 @@ func (sqlite *SqliteStore) migrate() error {
 	return err
 }
 
-// add a new row in the table pkid with key and value
-func (sqlite *SqliteStore) set(key string, value string) error {
+// Set adds a new row with key and value
+func (sqlite *SqliteStore) Set(key string, value string) error {
 	if key == "" {
 		return errors.New("invalid key")
 	}
@@ -63,7 +64,7 @@ func (sqlite *SqliteStore) set(key string, value string) error {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
 			if errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-				return sqlite.update(key, value)
+				return sqlite.Update(key, value)
 			}
 		}
 		return err
@@ -81,8 +82,8 @@ func (sqlite *SqliteStore) set(key string, value string) error {
 	return nil
 }
 
-// get the value of the given key in the table pkid
-func (sqlite *SqliteStore) get(key string) (string, error) {
+// Get gets the value of the given key
+func (sqlite *SqliteStore) Get(key string) (string, error) {
 	if key == "" {
 		return "", errors.New("invalid key")
 	}
@@ -99,8 +100,8 @@ func (sqlite *SqliteStore) get(key string) (string, error) {
 	return value, nil
 }
 
-// update a row in the table pkid with key and value
-func (sqlite *SqliteStore) update(key string, value string) error {
+// Update updates a row with key and value
+func (sqlite *SqliteStore) Update(key string, value string) error {
 	if key == "" {
 		return errors.New("invalid updated ID")
 	}
@@ -121,8 +122,8 @@ func (sqlite *SqliteStore) update(key string, value string) error {
 	return nil
 }
 
-// delete the value of the given key in the table pkid
-func (sqlite *SqliteStore) delete(key string) error {
+// Delete deletes the value of the given key
+func (sqlite *SqliteStore) Delete(key string) error {
 	if key == "" {
 		return errors.New("invalid key")
 	}
@@ -144,8 +145,8 @@ func (sqlite *SqliteStore) delete(key string) error {
 	return err
 }
 
-// get all keys in the table pkid
-func (sqlite *SqliteStore) list() ([]string, error) {
+// List gets all keys
+func (sqlite *SqliteStore) List() ([]string, error) {
 	rows, err := sqlite.db.Query("SELECT * FROM pkid")
 	if err != nil {
 		return nil, err

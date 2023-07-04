@@ -1,4 +1,5 @@
-package internal
+// Package app for pkid app
+package app
 
 import (
 	"encoding/base64"

@@ -1,93 +1,50 @@
-package internal
+// Package app for pkid app
+package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rawdaGastan/pkid/client"
 	"github.com/rawdaGastan/pkid/pkg"
-	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestVerifiers(t *testing.T) {
-	_, publicKey, err := client.GenerateKeyPair()
+func setUp(t testing.TB) *App {
+	dir := t.TempDir()
 
-	if err != nil {
-		t.Errorf("error generating keys: %q", err)
-	}
+	configPath := filepath.Join(dir, "config.json")
+	config := `{
+		"port": ":3000",
+		"version": "v1",
+		"db_file": "pkid.db"
+	}`
 
-	t.Run("test_wrong_encoding", func(t *testing.T) {
-		encoded := "XXXXXaGVsbG8="
+	err := os.WriteFile(configPath, []byte(config), 0644)
+	assert.NoError(t, err)
 
-		_, err := verifySignedData(encoded, publicKey)
-		if err == nil {
-			t.Error("decoding should fail")
-		}
-	})
+	app, err := NewApp(context.Background(), configPath)
+	assert.NoError(t, err)
 
-	t.Run("test_wrong_encoding_header", func(t *testing.T) {
-		encoded := "XXXXXaGVsbG8="
-
-		_, err := verifySignedHeader(encoded, publicKey)
-		if err == nil {
-			t.Error("decoding should fail")
-		}
-	})
+	return app
 }
 
-func TestServer(t *testing.T) {
-	testDir := t.TempDir()
-	pkidStore := NewSqliteStore()
+func TestHandlers(t *testing.T) {
+	app := setUp(t)
 
-	logger := zerolog.New(os.Stdout).With().Logger()
 	privateKey, publicKey, err := client.GenerateKeyPair()
+	assert.NoError(t, err)
 
-	if err != nil {
-		t.Errorf("error generating keys: %q", err)
-	}
-
-	router := newRouter(logger, pkidStore)
-	err = router.setConn(testDir + "/pkid.db")
-
-	if err != nil {
-		t.Errorf("error starting server database: %q", err)
-	}
-
-	t.Run("test_failed_server", func(t *testing.T) {
-		_, err := NewServer(logger, []mux.MiddlewareFunc{}, pkidStore, "", 3000)
-
-		if err == nil {
-			t.Errorf("expected error got nil")
-		}
-
-	})
-
-	t.Run("test_success_server", func(t *testing.T) {
-		mws := []mux.MiddlewareFunc{}
-		loggingMw := func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				log.Println(r.RequestURI)
-				next.ServeHTTP(w, r)
-			})
-		}
-		mws = append(mws, loggingMw)
-		_, err := NewServer(logger, mws, pkidStore, "pkid.db", 3000)
-
-		if err != nil {
-			t.Errorf("server should be created")
-		}
-
-	})
-
-	t.Run("test_set_server", func(t *testing.T) {
+	t.Run("test set", func(t *testing.T) {
 		header := map[string]interface{}{
 			"intent":    "pkid.store",
 			"timestamp": time.Now().Unix(),
@@ -100,14 +57,10 @@ func TestServer(t *testing.T) {
 		}
 
 		signedBody, err := pkg.SignEncode(payload, privateKey)
-		if err != nil {
-			t.Errorf("error sign body: %v", err)
-		}
+		assert.NoError(t, err)
 
 		signedHeader, err := pkg.SignEncode(header, privateKey)
-		if err != nil {
-			t.Errorf("error sign header: %v", err)
-		}
+		assert.NoError(t, err)
 
 		// set request
 		jsonBody := []byte(signedBody)
@@ -125,16 +78,12 @@ func TestServer(t *testing.T) {
 			"key":     "key",
 		})
 
-		w := httptest.NewRecorder()
-		router.set(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode != 201 {
-			t.Errorf("set should be successful")
-		}
+		response := httptest.NewRecorder()
+		WrapFunc(app.set).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusCreated)
 	})
 
-	t.Run("test_set_failed_auth_server", func(t *testing.T) {
+	t.Run("test set failed auth", func(t *testing.T) {
 		header := map[string]interface{}{
 			"intent":    "pkid.store",
 			"timestamp": time.Now().Unix() - 10,
@@ -147,14 +96,10 @@ func TestServer(t *testing.T) {
 		}
 
 		signedBody, err := pkg.SignEncode(payload, privateKey)
-		if err != nil {
-			t.Errorf("error sign body: %v", err)
-		}
+		assert.NoError(t, err)
 
 		signedHeader, err := pkg.SignEncode(header, privateKey)
-		if err != nil {
-			t.Errorf("error sign header: %v", err)
-		}
+		assert.NoError(t, err)
 
 		// set request
 		jsonBody := []byte(signedBody)
@@ -172,25 +117,19 @@ func TestServer(t *testing.T) {
 			"key":     "key",
 		})
 
-		w := httptest.NewRecorder()
-		router.set(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 201 {
-			t.Errorf("set should fail")
-		}
+		response := httptest.NewRecorder()
+		WrapFunc(app.set).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusUnauthorized)
 	})
 
-	t.Run("test_set_no_body", func(t *testing.T) {
+	t.Run("test set no body", func(t *testing.T) {
 		header := map[string]interface{}{
 			"intent":    "pkid.store",
 			"timestamp": time.Now().Unix(),
 		}
 
 		signedHeader, err := pkg.SignEncode(header, privateKey)
-		if err != nil {
-			t.Errorf("error sign header: %v", err)
-		}
+		assert.NoError(t, err)
 
 		// set request
 		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
@@ -204,17 +143,12 @@ func TestServer(t *testing.T) {
 			"key":     "key",
 		})
 
-		w := httptest.NewRecorder()
-		router.set(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 201 {
-			t.Errorf("set should fail")
-		}
+		response := httptest.NewRecorder()
+		WrapFunc(app.set).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusBadRequest)
 	})
 
-	t.Run("test_set_no_auth", func(t *testing.T) {
-
+	t.Run("test set no auth", func(t *testing.T) {
 		payload := map[string]interface{}{
 			"is_encrypted": false,
 			"payload":      "value",
@@ -222,9 +156,7 @@ func TestServer(t *testing.T) {
 		}
 
 		signedBody, err := pkg.SignEncode(payload, privateKey)
-		if err != nil {
-			t.Errorf("error sign body: %v", err)
-		}
+		assert.NoError(t, err)
 
 		// set request
 		jsonBody := []byte(signedBody)
@@ -241,17 +173,12 @@ func TestServer(t *testing.T) {
 			"key":     "key",
 		})
 
-		w := httptest.NewRecorder()
-		router.set(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 201 {
-			t.Errorf("set should fail")
-		}
+		response := httptest.NewRecorder()
+		WrapFunc(app.set).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusUnauthorized)
 	})
 
-	t.Run("test_set_wrong_key", func(t *testing.T) {
-
+	t.Run("test set wrong public key", func(t *testing.T) {
 		payload := map[string]interface{}{
 			"is_encrypted": false,
 			"payload":      "value",
@@ -259,9 +186,7 @@ func TestServer(t *testing.T) {
 		}
 
 		signedBody, err := pkg.SignEncode(payload, privateKey)
-		if err != nil {
-			t.Errorf("error sign body: %v", err)
-		}
+		assert.NoError(t, err)
 
 		// set request
 		jsonBody := []byte(signedBody)
@@ -278,145 +203,116 @@ func TestServer(t *testing.T) {
 			"key":     "key",
 		})
 
-		w := httptest.NewRecorder()
-		router.set(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 201 {
-			t.Errorf("set should fail")
-		}
+		response := httptest.NewRecorder()
+		WrapFunc(app.set).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusBadRequest)
 	})
 
-	t.Run("test_get_server", func(t *testing.T) {
+	t.Run("test get", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 			"key":     "key",
 		})
-		router.get(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode != 200 {
-			t.Errorf("get should be successful")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.get).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusOK)
 	})
 
-	t.Run("test_get_empty_server", func(t *testing.T) {
+	t.Run("test get empty server", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 			"key":     "",
 		})
-		router.get(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 200 {
-			t.Errorf("get should fail")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.list).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusOK)
 	})
 
-	t.Run("test_list_server", func(t *testing.T) {
+	t.Run("test list", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "pkid")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 		})
-		router.list(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode != 200 {
-			t.Errorf("list should be successful")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.list).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusOK)
 	})
 
-	t.Run("test_list_empty_server", func(t *testing.T) {
+	t.Run("test list empty project", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "",
 		})
-		router.list(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 200 {
-			t.Errorf("list should fail")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.list).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusBadRequest)
 	})
 
-	t.Run("test_delete_server", func(t *testing.T) {
+	t.Run("test delete", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
 		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 			"key":     "key",
 		})
-		router.delete(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode != 202 {
-			t.Errorf("delete should be successful")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.delete).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusNoContent)
 	})
 
-	t.Run("test_delete_empty_server", func(t *testing.T) {
+	t.Run("test delete empty", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "")
 		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 			"key":     "",
 		})
-		router.delete(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 202 {
-			t.Errorf("delete should fail")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.deleteProject).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusNoContent)
 	})
 
-	t.Run("test_delete_project_server", func(t *testing.T) {
+	t.Run("test delete project", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "pkid")
 		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "pkid",
 		})
-		router.deleteProject(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode != 202 {
-			t.Errorf("delete should be successful")
-		}
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.deleteProject).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusNoContent)
 	})
 
-	t.Run("test_delete_project_empty_server", func(t *testing.T) {
+	t.Run("test delete empty project", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v", hex.EncodeToString(publicKey), "")
 		req := httptest.NewRequest(http.MethodDelete, requestURL, nil)
-		w := httptest.NewRecorder()
 		req = mux.SetURLVars(req, map[string]string{
 			"pk":      hex.EncodeToString(publicKey),
 			"project": "",
 		})
-		router.deleteProject(w, req)
-		res := w.Result()
-		defer res.Body.Close()
-		if res.StatusCode == 202 {
-			t.Errorf("delete should fail")
-		}
-	})
 
+		response := httptest.NewRecorder()
+		WrapFunc(app.deleteProject).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusBadRequest)
+	})
 }

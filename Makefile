@@ -1,21 +1,46 @@
-OUT=$(shell realpath -m bin)
-GOPATH=$(shell go env GOPATH)
-branch=$(shell git symbolic-ref -q --short HEAD || git describe --tags --exact-match)
-revision=$(shell git rev-parse HEAD)
-dirty=$(shell test -n "`git diff --shortstat 2> /dev/null | tail -n1`" && echo "*")
-ldflags='-w -s -X $(version).Branch=$(branch) -X $(version).Revision=$(revision) -X $(version).Dirty=$(dirty)'
+PWD := $(shell pwd)
+GOPATH := $(shell go env GOPATH)
 
-all: getdeps test
+all: verifiers test
 
-getdeps:
+build:
+	@echo "Running $@"
+	@go build -ldflags=\
+	"-X 'github.com/rawdaGastan/pkid/cmd.commit=$(shell git rev-parse HEAD)'\
+	 -X 'github.com/rawdaGastan/pkid/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	 -o bin/pkid main.go
+
+run: build
+	@echo "Running $@"
+	bin/pkid 
+
+test: 
+	@echo "Running Tests"
+	go test -v ./...
+
+coverage: clean 
+	mkdir coverage
+	go test -v -vet=off ./... -coverprofile=coverage/coverage.out
+	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+	@${GOPATH}/bin/gopherbadger -png=false -md="README.md"
+	rm coverage.out
+
+clean:
+	rm ./coverage -rf
+	rm ./bin -rf
+	
+getverifiers:
 	@echo "Installing staticcheck" && go get -u honnef.co/go/tools/cmd/staticcheck && go install honnef.co/go/tools/cmd/staticcheck
 	@echo "Installing gocyclo" && go get -u github.com/fzipp/gocyclo/cmd/gocyclo && go install github.com/fzipp/gocyclo/cmd/gocyclo
 	@echo "Installing deadcode" && go get -u github.com/remyoudompheng/go-misc/deadcode && go install github.com/remyoudompheng/go-misc/deadcode
 	@echo "Installing misspell" && go get -u github.com/client9/misspell/cmd/misspell && go install github.com/client9/misspell/cmd/misspell
-	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45
+	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+	@echo "Installing gopherbadger" && go get github.com/jpoles1/gopherbadger && go install github.com/jpoles1/gopherbadger
 	go mod tidy
 
 verifiers: fmt lint cyclo deadcode spelling staticcheck
+
+checks: verifiers
 
 fmt:
 	@echo "Running $@"
@@ -24,7 +49,6 @@ fmt:
 lint:
 	@echo "Running $@"
 	@${GOPATH}/bin/golangci-lint run
-	@golint ./...
 
 cyclo:
 	@echo "Running $@"
@@ -41,27 +65,3 @@ spelling:
 staticcheck:
 	@echo "Running $@"
 	@${GOPATH}/bin/staticcheck -- ./...
-
-test: verifiers
-	go test -v -vet=off ./...
-
-benchmarks: 
-	go test -v -vet=off ./... -bench=. -count 1 -benchtime=10s -benchmem -run=^#
-
-coverage: clean 
-	mkdir coverage
-	go test -v -vet=off ./... -coverprofile=coverage/coverage.out
-	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
-
-testrace: verifiers
-	go test -v -race -vet=off ./...
-
-run: 
-	go run main.go
-
-build:
-	go build -o bin/pkid main.go 
-	
-clean:
-	rm ./coverage -rf
-	rm ./bin -rf
