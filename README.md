@@ -95,9 +95,9 @@ example `config.json`:
 
 ```json
 {
-		"port": ":3000",
-		"version": "v1",
-		"db_file": "pkid.db"
+	"port": ":3000",
+	"version": "v1",
+	"db_file": "pkid.db"
 }
 ```
 
