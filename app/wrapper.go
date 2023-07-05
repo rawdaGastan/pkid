@@ -147,8 +147,3 @@ func NotFound(err error) Response {
 func UnAuthorized(err error) Response {
 	return Error(err, http.StatusUnauthorized)
 }
-
-// Forbidden response
-func Forbidden(err error) Response {
-	return Error(err, http.StatusForbidden)
-}

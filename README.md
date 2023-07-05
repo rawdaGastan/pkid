@@ -1,6 +1,6 @@
 # PKID
 
-[![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/) [![Testing](https://github.com/rawdaGastan/pkid/actions/workflows/test.yml/badge.svg?branch=development_mono)](https://github.com/rawdaGastan/pkid/actions/workflows/test.yml) <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-80%25-brightgreen.svg?longCache=true&style=flat)</a>
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/a06fc2e7510443c89bcdb5f8c4872d09)](https://app.codacy.com/gh/rawdaGastan/pkid/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/) [![Testing](https://github.com/rawdaGastan/pkid/actions/workflows/test.yml/badge.svg?branch=development_mono)](https://github.com/rawdaGastan/pkid/actions/workflows/test.yml) <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-81%25-brightgreen.svg?longCache=true&style=flat)</a>
 
 PKID is a public Key Indexed Datastore. You can save plain or encrypted data in a public key index; as long as you are the owner of the secret corresponding to that public key.
 

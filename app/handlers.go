@@ -24,7 +24,7 @@ func (a *App) get(r *http.Request) (interface{}, Response) {
 	value, err := a.db.Get(docKey)
 	if err != nil {
 		log.Error().Err(err).Send()
-		return nil, InternalServerError(fmt.Errorf("can't find key: %s", docKey))
+		return nil, NotFound(fmt.Errorf("can't find key: %s", docKey))
 	}
 
 	return ResponseMsg{

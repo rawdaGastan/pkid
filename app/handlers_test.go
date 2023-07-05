@@ -222,6 +222,20 @@ func TestHandlers(t *testing.T) {
 		assert.Equal(t, response.Code, http.StatusOK)
 	})
 
+	t.Run("test get empty", func(t *testing.T) {
+		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "")
+		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
+		req = mux.SetURLVars(req, map[string]string{
+			"pk":      hex.EncodeToString(publicKey),
+			"project": "pkid",
+			"key":     "",
+		})
+
+		response := httptest.NewRecorder()
+		WrapFunc(app.get).ServeHTTP(response, req)
+		assert.Equal(t, response.Code, http.StatusNotFound)
+	})
+
 	t.Run("test get empty server", func(t *testing.T) {
 		requestURL := fmt.Sprintf("/%v/%v/%v", hex.EncodeToString(publicKey), "pkid", "key")
 		req := httptest.NewRequest(http.MethodGet, requestURL, nil)
