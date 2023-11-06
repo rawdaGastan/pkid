@@ -5,7 +5,7 @@ go 1.19
 require github.com/mattn/go-sqlite3 v1.14.17
 
 require (
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/jorrizza/ed2curve25519 v0.1.0
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/cobra v1.7.0
