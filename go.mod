@@ -9,7 +9,7 @@ require (
 	github.com/jorrizza/ed2curve25519 v0.1.0
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.16.0
 	gopkg.in/validator.v2 v2.0.1
 )
